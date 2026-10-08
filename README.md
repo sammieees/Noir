@@ -1,50 +1,19 @@
-# Welcome to your Expo app 👋
+# Men's Wear Online Shop
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo Router starter rebuilt from the uploaded React Native screens.
 
-## Get started
+## Run
+1. Install Node.js (LTS).
+2. In this folder run `npm install`.
+3. Run `npx expo start`.
+4. Scan the QR code with Expo Go, or press `w` for web.
 
-1. Install dependencies
+## Included
+- Welcome, sign up and login screens
+- Product catalog with add, edit and delete
+- Quick sale checkout that reduces stock
+- Sales history and inventory overview
+- AsyncStorage persistence on the device
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Notes
+This is a front-end/demo shop using local AsyncStorage. It does not yet include an online payment gateway, backend server, cloud database, customer shipping, or real multi-user authentication. For a public production shop, connect a secure backend and payment provider. Passwords in this educational demo are stored locally and are not suitable for production.
