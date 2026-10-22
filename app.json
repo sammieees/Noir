@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Mens-Hub Online Shop",
-    "slug": "mens-hub-online-shop",
-    "scheme": "menshub",
+    "name": "Noir",
+    "slug": "noir",
+    "scheme": "noir",
     "plugins": ["expo-router"],
     "experiments": { "typedRoutes": false },
     "web": { "bundler": "metro" }

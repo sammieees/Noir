@@ -116,7 +116,14 @@ export default function ProductsScreen() {
       return require("../../assets/products/jacket.jpg");
     }
 
-   
+    if (image === "jacket") {
+      return require("../../assets/products/9801009s.webp");
+    }
+
+    if (image === "jacket") {
+      return require("../../assets/products/camiseta-oversized-essentials-fear-of-god-core-heather-bege-858513.webp");
+    }
+
 
     if (
       typeof image === "string" &&
@@ -245,8 +252,7 @@ export default function ProductsScreen() {
     product
   ) => {
     router.push({
-      pathname:
-        "/product-details",
+      pathname: "/details/[id]",
 
       params: {
         id: String(
@@ -255,8 +261,6 @@ export default function ProductsScreen() {
       },
     });
   };
-
-   
 
   const renderProduct = ({ item }) => {
     const sizes = getSizes(item);
@@ -320,15 +324,6 @@ export default function ProductsScreen() {
             <Text style={styles.price}>
               {money(item.price)}
             </Text>
-
-            {Number(item.oldPrice || 0) > 0 && (
-              <Text style={styles.oldPrice}>
-                ₱
-                {Number(item.oldPrice).toLocaleString(
-                  "en-PH"
-                )}
-              </Text>
-            )}
           </View>
 
           {/* SIZES */}
@@ -352,14 +347,14 @@ export default function ProductsScreen() {
 
           {/* VIEW DETAILS */}
 
-          <Pressable
-            style={styles.detailsButton}
-            onPress={() => openDetails(item)}
-          >
-            <Text style={styles.detailsText}>
-              View Details
-            </Text>
-          </Pressable>
+          
+    <Pressable
+      style={styles.detailsButton}
+      onPress={() => openDetails(item)}
+    >
+      <Text style={styles.detailsText}>View Details</Text>
+    </Pressable>
+
 
           {/* ADD TO CART */}
 
@@ -387,130 +382,6 @@ export default function ProductsScreen() {
     <SafeAreaView
       style={styles.container}
     >
-
-      {/* HEADER */}
-
-      <View
-        style={styles.header}
-      >
-        <View>
-          <Text
-            style={styles.brand}
-          >
-            NOIR
-          </Text>
-
-          <Text
-            style={
-              styles.subtitle
-            }
-          >
-            Find your style
-          </Text>
-        </View>
-
-        {/* CART */}
-
-        <Pressable
-          style={
-            styles.cartIconButton
-          }
-          onPress={() =>
-            router.push(
-              "/(tabs)/cart"
-            )
-          }
-        >
-          <Text
-            style={
-              styles.cartIcon
-            }
-          >
-            🛒
-          </Text>
-
-          {itemCount > 0 && (
-            <View
-              style={
-                styles.cartBadge
-              }
-            >
-              <Text
-                style={
-                  styles.cartBadgeText
-                }
-              >
-                {itemCount}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
-
-      {/* BANNER */}
-
-      <View
-        style={styles.banner}
-      >
-        <View
-          style={
-            styles.bannerText
-          }
-        >
-
-          <Text
-            style={
-              styles.bannerTitle
-            }
-          >
-            LOOK GOOD.
-          </Text>
-
-          <Text
-            style={
-              styles.bannerTitle
-            }
-          >
-            FEEL GOOD.
-          </Text>
-
-          <Text
-            style={
-              styles.bannerDescription
-            }
-          >
-            Simple styles made
-            for everyday wear.
-          </Text>
-        </View>
-      </View>
-
-      {/* SECTION HEADER */}
-
-      <View
-        style={
-          styles.sectionHeader
-        }
-      >
-        <Text
-          style={
-            styles.sectionTitle
-          }
-        >
-          Our Collection
-        </Text>
-
-        <Text
-          style={
-            styles.productCount
-          }
-        >
-          {products.length} products
-        </Text>
-      </View>
-
-      {/* PRODUCTS */}
-
       <FlatList
         data={products}
         keyExtractor={(item) =>
@@ -525,6 +396,45 @@ export default function ProductsScreen() {
         }
         contentContainerStyle={
           styles.list
+        }
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.brand}>NOIR</Text>
+                <Text style={styles.subtitle}>Find your style</Text>
+              </View>
+
+              <Pressable
+                style={styles.cartIconButton}
+                onPress={() => router.push("/(tabs)/cart")}
+              >
+                <Text style={styles.cartIcon}>🛒</Text>
+                {itemCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{itemCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            <View style={styles.banner}>
+              <View style={styles.bannerText}>
+                <Text style={styles.bannerTitle}>LOOK GOOD.</Text>
+                <Text style={styles.bannerTitle}>FEEL GOOD.</Text>
+                <Text style={styles.bannerDescription}>
+                  Simple styles made for everyday wear.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Our Collection</Text>
+              <Text style={styles.productCount}>
+                {products.length} products
+              </Text>
+            </View>
+          </>
         }
         showsVerticalScrollIndicator={
           false
@@ -625,12 +535,12 @@ const styles = StyleSheet.create({
   },
 
   banner: {
-    margin: 15,
+    margin: 10,
     backgroundColor:
       "#222",
     borderRadius: 20,
-    padding: 22,
-    minHeight: 155,
+    padding: 20,
+    minHeight: 135,
     justifyContent:
       "center",
   },
@@ -681,7 +591,7 @@ const styles = StyleSheet.create({
   },
 
   list: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingBottom: 30,
   },
 

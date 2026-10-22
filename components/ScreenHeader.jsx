@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 export default function ScreenHeader({
   title = "Products",
   subtitle = "",
-  eyebrow = "MENS-HUB / STORE MANAGEMENT",
+  eyebrow = "Noir / STORE MANAGEMENT",
 }) {
   return (
     <View style={styles.container}>

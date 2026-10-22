@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
 import {
-    Alert,
-    FlatList,
-    Image,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -47,10 +47,8 @@ export default function Cart() {
           text: "Place Order",
           onPress: async () => {
             try {
-              // SAVE SALE + REDUCE INVENTORY
               await completeSale(cart);
 
-              // CLEAR CART ONLY AFTER SUCCESSFUL SAVE
               clearCart();
 
               Alert.alert(

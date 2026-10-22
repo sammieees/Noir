@@ -1,5 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
 
 export default function TabsLayout() {
   return (
@@ -7,39 +7,48 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
 
-        tabBarActiveTintColor: "#111",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: "#111111",
+        tabBarInactiveTintColor: "#888888",
 
         tabBarStyle: {
-          height: 70,
-          paddingTop: 8,
+          height: 72,
+          paddingTop: 9,
           paddingBottom: 8,
-          backgroundColor: "#fff",
+          backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: "#eee",
+          borderTopColor: "#E5E5E5",
+          elevation: 8,
+          shadowColor: "#000000",
+          shadowOffset: {
+            width: 0,
+            height: -3,
+          },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
         },
 
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: "700",
-          marginTop: 2,
+          letterSpacing: 0.8,
+          marginTop: 3,
+        },
+
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
       }}
     >
       <Tabs.Screen
         name="products"
         options={{
-          title: "Products",
-
-          tabBarIcon: ({ focused }) => (
-            <Text
-              style={{
-                fontSize: focused ? 23 : 20,
-                opacity: focused ? 1 : 0.6,
-              }}
-            >
-              🛍️
-            </Text>
+          title: "SHOP",
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? "shirt" : "shirt-outline"}
+              size={focused ? 25 : 23}
+              color={color}
+            />
           ),
         }}
       />
@@ -47,54 +56,41 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: "Cart",
-
-          tabBarIcon: ({ focused }) => (
-            <Text
-              style={{
-                fontSize: focused ? 23 : 20,
-                opacity: focused ? 1 : 0.6,
-              }}
-            >
-              🛒
-            </Text>
+          title: "CART",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "bag-handle" : "bag-handle-outline"}
+              size={focused ? 25 : 23}
+              color={color}
+            />
           ),
         }}
       />
 
-        <Tabs.Screen
-    name="sales"
-    options={{
-      title: "Sales",
-
-      tabBarIcon: ({ focused }) => (
-        <Text
-          style={{
-            fontSize: focused ? 23 : 20,
-            fontWeight: "800",
-            opacity: focused ? 1 : 0.6,
-          }}
-        >
-          ₱
-        </Text>
-      ),
-    }}
-  />
+      <Tabs.Screen
+        name="sales"
+        options={{
+          title: "SALES",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "bar-chart" : "bar-chart-outline"}
+              size={focused ? 25 : 23}
+              color={color}
+            />
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="inventory"
         options={{
-          title: "Inventory",
-
-          tabBarIcon: ({ focused }) => (
-            <Text
-              style={{
-                fontSize: focused ? 23 : 20,
-                opacity: focused ? 1 : 0.6,
-              }}
-            >
-              📦
-            </Text>
+          title: "INVENTORY",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "cube" : "cube-outline"}
+              size={focused ? 25 : 23}
+              color={color}
+            />
           ),
         }}
       />

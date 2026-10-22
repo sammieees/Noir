@@ -2,7 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -17,141 +21,224 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleLogin = async () => {
-    setMessage("");
+const handleLogin = async () => {
+  setMessage("");
 
-    // Check empty fields
-    if (!email.trim() || !password) {
-      setMessage(
-        "Please enter your email and password."
-      );
+  if (!email.trim() || !password) {
+    setMessage("Please enter your email and password.");
+    return;
+  }
+
+  try {
+    const users = JSON.parse(
+      (await AsyncStorage.getItem("users")) || "[]"
+    );
+
+    const user = users.find(
+      (u) => u.email === email.trim().toLowerCase()
+    );
+
+    if (!user) {
+      setMessage("Email is not registered.");
       return;
     }
 
-    try {
-      // Get registered account
-      const raw =
-        await AsyncStorage.getItem("user");
-
-      if (!raw) {
-        setMessage(
-          "No account found. Please create an account first."
-        );
-        return;
-      }
-
-      const user = JSON.parse(raw);
-
-      // Check email
-      if (
-        email.trim().toLowerCase() !==
-        user.email.toLowerCase()
-      ) {
-        setMessage(
-          "Email is not registered."
-        );
-        return;
-      }
-
-      // Check password
-      if (password !== user.password) {
-        setMessage("Incorrect password.");
-        return;
-      }
-
-      // Save login status
-      await AsyncStorage.setItem(
-        "loggedIn",
-        "true"
-      );
-
-      // Go to Products
-      router.replace(
-        "/(tabs)/products"
-      );
-    } catch (error) {
-      console.log("LOGIN ERROR:", error);
-
-      setMessage(
-        "Unable to log in. Please try again."
-      );
+    if (user.password !== password) {
+      setMessage("Incorrect password.");
+      return;
     }
-  };
+
+    await AsyncStorage.setItem("user", JSON.stringify(user));
+    await AsyncStorage.setItem("loggedIn", "true");
+
+    router.replace("/(tabs)/products");
+  } catch (error) {
+    console.log(error);
+    setMessage("Unable to log in.");
+  }
+};
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-
-        <Text style={styles.title}>
-          WELCOME BACK
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Sign in to your NOIR account
-        </Text>
-
-        {message ? (
-          <View style={styles.alertBox}>
-            <Text style={styles.alertText}>
-              {message}
-            </Text>
-          </View>
-        ) : null}
-
-        <Text style={styles.label}>
-          EMAIL ADDRESS
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor="#999"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <Text style={styles.label}>
-          PASSWORD
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <Pressable
-          style={styles.loginButton}
-          onPress={handleLogin}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#777272" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
+          padding: 20,
+          paddingBottom: 40,
+        }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={true}
+      >
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: "#111010",
+              borderColor: "#292929",
+              borderWidth: 1,
+            },
+          ]}
         >
-          <Text style={styles.buttonText}>
-            SIGN IN
-          </Text>
-        </Pressable>
+          <Image
+            source={require("../assets/products/logo.png")}
+            style={{
+              width: "100%",
+              height: 130,
+              alignSelf: "center",
+              marginBottom: 15,
+            }}
+            resizeMode="contain"
+          />
 
-        <View style={styles.signupContainer}>
-          <Text style={styles.accountText}>
-            New here?
+          <Text
+            style={[
+              styles.title,
+              {
+                color: "#FFFFFF",
+                textAlign: "center",
+                letterSpacing: 3,
+              },
+            ]}
+          >
+            WELCOME BACK
           </Text>
+
+          <Text
+            style={[
+              styles.subtitle,
+              {
+                color: "#AAAAAA",
+                textAlign: "center",
+                marginBottom: 25,
+              },
+            ]}
+          >
+            Sign in to your NOIR account
+          </Text>
+
+          {message ? (
+            <View style={styles.alertBox}>
+              <Text style={styles.alertText}>{message}</Text>
+            </View>
+          ) : null}
+
+          <Text style={[styles.label, { color: "#FFFFFF" }]}>
+            EMAIL ADDRESS
+          </Text>
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: "#171717",
+                color: "#FFFFFF",
+                borderColor: "#383838",
+                borderWidth: 1,
+              },
+            ]}
+            placeholder="you@example.com"
+            placeholderTextColor="#888888"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+
+          <Text style={[styles.label, { color: "#FFFFFF" }]}>
+            PASSWORD
+          </Text>
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: "#171717",
+                color: "#FFFFFF",
+                borderColor: "#383838",
+                borderWidth: 1,
+              },
+            ]}
+            placeholder="Enter your password"
+            placeholderTextColor="#888888"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+          />
 
           <Pressable
-            onPress={() =>
-              router.push("/signup")
-            }
+            style={[
+              styles.loginButton,
+              {
+                backgroundColor: "#FFFFFF",
+                marginTop: 15,
+              },
+            ]}
+            onPress={handleLogin}
           >
-            <Text style={styles.signupText}>
-              {" "}Create account
+            <Text
+              style={[
+                styles.buttonText,
+                {
+                  color: "#000000",
+                  fontWeight: "bold",
+                  letterSpacing: 2,
+                },
+              ]}
+            >
+              SIGN IN
             </Text>
           </Pressable>
-        </View>
 
-      </View>
-    </View>
+          <View
+            style={[
+              styles.signupContainer,
+              { marginTop: 25 },
+            ]}
+          >
+            <Text style={[styles.accountText, { color: "#AAAAAA" }]}>
+              New here?
+            </Text>
+
+            <Pressable onPress={() => router.push("/signup")}>
+              <Text
+                style={[
+                  styles.signupText,
+                  {
+                    color: "#FFFFFF",
+                    fontWeight: "bold",
+                  },
+                ]}
+              >
+                {" "}Create account
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text
+            style={{
+              color: "#666666",
+              textAlign: "center",
+              fontSize: 10,
+              letterSpacing: 3,
+              marginTop: 30,
+            }}
+          >
+            THE MODERN GENTLEMAN
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
