@@ -1,3 +1,4 @@
+
 import { useRouter } from "expo-router";
 import {
   Alert,
@@ -9,8 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { completeSale, money } from "../../lib/store";
+import { money } from "../../lib/store";
 import { useCart } from "../CartContext";
 
 export default function Cart() {
@@ -25,53 +25,17 @@ export default function Cart() {
     total,
   } = useCart();
 
+  // GO TO CHECKOUT
   const handleCheckout = () => {
-    if (cart.length === 0) {
-      Alert.alert(
-        "Cart is Empty",
-        "Please add a product first."
-      );
-      return;
-    }
+  if (cart.length === 0) {
+    Alert.alert("Empty Cart", "Please add products first.");
+    return;
+  }
 
-    Alert.alert(
-      "Order Confirmation",
-      `Your total is ${money(total)}. Place order?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+  router.push("/checkout");
+};
 
-        {
-          text: "Place Order",
-          onPress: async () => {
-            try {
-              await completeSale(cart);
-
-              clearCart();
-
-              Alert.alert(
-                "Order Successful",
-                "Thank you for your order! Your purchase has been recorded."
-              );
-            } catch (error) {
-              console.log(
-                "CHECKOUT ERROR:",
-                error
-              );
-
-              Alert.alert(
-                "Checkout Error",
-                "The order could not be completed. Please try again."
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
+  // CART PRODUCT
   const renderItem = ({ item }) => {
     return (
       <View style={styles.cartCard}>
@@ -99,13 +63,9 @@ export default function Cart() {
             <View style={styles.quantityContainer}>
               <Pressable
                 style={styles.quantityButton}
-                onPress={() =>
-                  decreaseQuantity(item.cartId)
-                }
+                onPress={() => decreaseQuantity(item.cartId)}
               >
-                <Text style={styles.quantityText}>
-                  −
-                </Text>
+                <Text style={styles.quantityText}>−</Text>
               </Pressable>
 
               <Text style={styles.quantity}>
@@ -114,21 +74,15 @@ export default function Cart() {
 
               <Pressable
                 style={styles.quantityButton}
-                onPress={() =>
-                  increaseQuantity(item.cartId)
-                }
+                onPress={() => increaseQuantity(item.cartId)}
               >
-                <Text style={styles.quantityText}>
-                  +
-                </Text>
+                <Text style={styles.quantityText}>+</Text>
               </Pressable>
             </View>
 
             {/* REMOVE */}
             <Pressable
-              onPress={() =>
-                removeFromCart(item.cartId)
-              }
+              onPress={() => removeFromCart(item.cartId)}
             >
               <Text style={styles.removeText}>
                 Remove
@@ -144,9 +98,7 @@ export default function Cart() {
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.title}>
-          My Cart
-        </Text>
+        <Text style={styles.title}>My Cart</Text>
 
         {cart.length > 0 && (
           <Pressable
@@ -168,9 +120,7 @@ export default function Cart() {
               )
             }
           >
-            <Text style={styles.clearText}>
-              Clear
-            </Text>
+            <Text style={styles.clearText}>Clear</Text>
           </Pressable>
         )}
       </View>
@@ -178,24 +128,19 @@ export default function Cart() {
       {/* EMPTY CART */}
       {cart.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>
-            🛒
-          </Text>
+          <Text style={styles.emptyIcon}>🛒</Text>
 
           <Text style={styles.emptyTitle}>
             Your cart is empty
           </Text>
 
           <Text style={styles.emptyText}>
-            Add some men's wear products to your
-            cart.
+            Add some men's wear products to your cart.
           </Text>
 
           <Pressable
             style={styles.shopButton}
-            onPress={() =>
-              router.push("/(tabs)/products")
-            }
+            onPress={() => router.push("/(tabs)/products")}
           >
             <Text style={styles.shopButtonText}>
               Shop Now
@@ -206,9 +151,7 @@ export default function Cart() {
         <>
           <FlatList
             data={cart}
-            keyExtractor={(item) =>
-              item.cartId
-            }
+            keyExtractor={(item) => String(item.cartId)}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
@@ -230,9 +173,7 @@ export default function Cart() {
               style={styles.checkoutButton}
               onPress={handleCheckout}
             >
-              <Text style={styles.checkoutText}>
-                Buy Now
-              </Text>
+            <Text style={styles.checkoutText}>BUY NOW</Text>
             </Pressable>
           </View>
         </>

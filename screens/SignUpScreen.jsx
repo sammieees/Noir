@@ -1,3 +1,4 @@
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -25,51 +26,85 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-  setMessage("");
+    setMessage("");
 
-  if (!name.trim() || !email.trim() || !password || !confirmPassword) {
-    setMessage("Please fill in all fields.");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    setMessage("Passwords do not match.");
-    return;
-  }
-
-  try {
-    const users = JSON.parse(
-      (await AsyncStorage.getItem("users")) || "[]"
-    );
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    if (users.some((u) => u.email === cleanEmail)) {
-      setMessage("Email already registered.");
+    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+      setMessage("Please fill in all fields.");
       return;
     }
 
-    users.push({
-      name: name.trim(),
-      email: cleanEmail,
-      password,
-    });
+    if (password.length < 6) {
+      setMessage("Password must be at least 6 characters.");
+      return;
+    }
 
-    await AsyncStorage.setItem("users", JSON.stringify(users));
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
 
-    setMessage("Account created successfully!");
-    router.replace("/login");
-  } catch (error) {
-    console.log(error);
-    setMessage("Unable to create account.");
-  }
-};
+    try {
+      setLoading(true);
+
+      const savedUsers = await AsyncStorage.getItem("users");
+      const users = savedUsers ? JSON.parse(savedUsers) : [];
+
+      const cleanEmail = email.trim().toLowerCase();
+
+      const existingUser = users.find(
+        (user) => user.email?.trim().toLowerCase() === cleanEmail
+      );
+
+      if (existingUser) {
+        setMessage("Email already registered.");
+        return;
+      }
+
+      const newUser = {
+        name: name.trim(),
+        email: cleanEmail,
+        password: password,
+        role: "Customer",
+      };
+
+      users.push(newUser);
+
+      await AsyncStorage.setItem("users", JSON.stringify(users));
+
+      const checkUsers = JSON.parse(
+        (await AsyncStorage.getItem("users")) || "[]"
+      );
+
+      const accountSaved = checkUsers.find(
+        (user) => user.email === cleanEmail
+      );
+
+      if (!accountSaved) {
+        setMessage("Account was not saved. Please try again.");
+        return;
+      }
+
+      setMessage("Account created successfully!");
+
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+
+      router.replace("/login");
+
+    } catch (error) {
+      console.log("SIGNUP ERROR:", error);
+      setMessage("Unable to create account.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#777272" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
     >
       <ScrollView
         style={{ flex: 1 }}
@@ -156,7 +191,6 @@ export default function SignUpScreen() {
             onChangeText={setName}
             autoCapitalize="words"
             autoCorrect={false}
-            returnKeyType="next"
           />
 
           <Text style={[styles.label, { color: "#FFFFFF" }]}>
@@ -180,7 +214,6 @@ export default function SignUpScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            returnKeyType="next"
           />
 
           <Text style={[styles.label, { color: "#FFFFFF" }]}>
@@ -203,7 +236,6 @@ export default function SignUpScreen() {
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
-            returnKeyType="next"
           />
 
           <Text style={[styles.label, { color: "#FFFFFF" }]}>
@@ -226,17 +258,17 @@ export default function SignUpScreen() {
             onChangeText={setConfirmPassword}
             secureTextEntry
             autoCapitalize="none"
-            returnKeyType="go"
             onSubmitEditing={handleSignUp}
           />
 
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.loginButton,
               {
                 backgroundColor: "#FFFFFF",
                 marginTop: 15,
-                opacity: loading ? 0.6 : 1,
+                opacity: loading ? 0.6 : pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
               },
             ]}
             onPress={handleSignUp}
@@ -266,7 +298,13 @@ export default function SignUpScreen() {
               Already have an account?
             </Text>
 
-            <Pressable onPress={() => router.replace("/login")}>
+            <Pressable
+              onPress={() => router.replace("/login")}
+              style={({ pressed }) => ({
+                transform: [{ scale: pressed ? 0.95 : 1 }],
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
               <Text
                 style={[
                   styles.signupText,

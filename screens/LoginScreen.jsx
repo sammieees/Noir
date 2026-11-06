@@ -1,3 +1,5 @@
+
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -12,8 +14,6 @@ import {
   View,
 } from "react-native";
 
-import styles from "../components/stylessheet.jsx";
-
 export default function LoginScreen() {
   const router = useRouter();
 
@@ -21,128 +21,239 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-const handleLogin = async () => {
-  setMessage("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false);
 
-  if (!email.trim() || !password) {
-    setMessage("Please enter your email and password.");
-    return;
-  }
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  try {
-    const users = JSON.parse(
-      (await AsyncStorage.getItem("users")) || "[]"
-    );
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const user = users.find(
-      (u) => u.email === email.trim().toLowerCase()
-    );
+  const ADMIN_EMAIL = "admin@noir.com";
+  const ADMIN_PASSWORD = "admin123";
 
-    if (!user) {
-      setMessage("Email is not registered.");
+  // AUTOMATIC ADMIN OR CUSTOMER LOGIN
+  const handleLogin = async () => {
+    setMessage("");
+
+    if (!email.trim() || !password) {
+      setMessage("Please enter your email and password.");
       return;
     }
 
-    if (user.password !== password) {
-      setMessage("Incorrect password.");
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+
+      // CHECK ADMIN ACCOUNT
+      if (cleanEmail === ADMIN_EMAIL) {
+        const savedAdminPassword = await AsyncStorage.getItem(
+          "adminPassword"
+        );
+
+        const correctAdminPassword =
+          savedAdminPassword || ADMIN_PASSWORD;
+
+        if (password === correctAdminPassword) {
+          const admin = {
+            name: "NOIR Admin",
+            email: ADMIN_EMAIL,
+            role: "Admin",
+          };
+
+          await AsyncStorage.setItem("user", JSON.stringify(admin));
+          await AsyncStorage.setItem("loggedIn", "true");
+
+          router.replace("/(tabs)/dashboard");
+          return;
+        }
+
+        setMessage("Admin password is incorrect.");
+        return;
+      }
+
+      // CHECK CUSTOMER ACCOUNT
+      const savedUsers = await AsyncStorage.getItem("users");
+      const users = savedUsers ? JSON.parse(savedUsers) : [];
+
+      const customer = users.find(
+        (user) =>
+          user.email?.trim().toLowerCase() === cleanEmail &&
+          user.password === password
+      );
+
+      if (!customer) {
+        setMessage("Email or password is incorrect.");
+        return;
+      }
+
+      const loggedInCustomer = {
+        ...customer,
+        role: "Customer",
+      };
+
+      await AsyncStorage.setItem(
+        "user",
+        JSON.stringify(loggedInCustomer)
+      );
+
+      await AsyncStorage.setItem("loggedIn", "true");
+
+      router.replace("/(tabs)/products");
+    } catch (error) {
+      console.log("LOGIN ERROR:", error);
+      setMessage("Unable to log in.");
+    }
+  };
+
+  // RESET PASSWORD FOR ADMIN AND CUSTOMER
+  const resetPassword = async () => {
+    setMessage("");
+
+    if (!email.trim() || !newPassword || !confirmPassword) {
+      setMessage("Please complete all fields.");
       return;
     }
 
-    await AsyncStorage.setItem("user", JSON.stringify(user));
-    await AsyncStorage.setItem("loggedIn", "true");
+    if (newPassword.length < 6) {
+      setMessage("Password must be at least 6 characters.");
+      return;
+    }
 
-    router.replace("/(tabs)/products");
-  } catch (error) {
-    console.log(error);
-    setMessage("Unable to log in.");
-  }
-};
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+
+      // ADMIN PASSWORD RESET
+      if (cleanEmail === ADMIN_EMAIL) {
+        await AsyncStorage.setItem("adminPassword", newPassword);
+
+        setForgotPassword(false);
+        setNewPassword("");
+        setConfirmPassword("");
+        setPassword("");
+
+        setMessage("Admin password updated. You can now log in.");
+        return;
+      }
+
+      // CUSTOMER PASSWORD RESET
+      const savedUsers = await AsyncStorage.getItem("users");
+      const users = savedUsers ? JSON.parse(savedUsers) : [];
+
+      const userIndex = users.findIndex(
+        (user) =>
+          user.email?.trim().toLowerCase() === cleanEmail
+      );
+
+      if (userIndex === -1) {
+        setMessage("Email is not registered.");
+        return;
+      }
+
+      users[userIndex].password = newPassword;
+
+      await AsyncStorage.setItem("users", JSON.stringify(users));
+
+      setForgotPassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPassword("");
+
+      setMessage("Password updated. You can now log in.");
+    } catch (error) {
+      console.log("RESET PASSWORD ERROR:", error);
+      setMessage("Unable to reset password.");
+    }
+  };
+
+  const inputStyle = {
+    backgroundColor: "#222222",
+    color: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#555555",
+    borderRadius: 8,
+    padding: 14,
+    fontSize: 14,
+  };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#777272" }}
+      style={{ flex: 1, backgroundColor: "#eeeeee" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <ScrollView
-        style={{ flex: 1 }}
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           padding: 20,
-          paddingBottom: 40,
         }}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={true}
       >
         <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: "#111010",
-              borderColor: "#292929",
-              borderWidth: 1,
-            },
-          ]}
+          style={{
+            backgroundColor: "#111111",
+            padding: 25,
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: "#333333",
+          }}
         >
           <Image
             source={require("../assets/products/logo.png")}
-            style={{
-              width: "100%",
-              height: 130,
-              alignSelf: "center",
-              marginBottom: 15,
-            }}
+            style={{ width: "100%", height: 110, marginBottom: 15 }}
             resizeMode="contain"
           />
 
           <Text
-            style={[
-              styles.title,
-              {
-                color: "#FFFFFF",
-                textAlign: "center",
-                letterSpacing: 3,
-              },
-            ]}
+            style={{
+              color: "#FFFFFF",
+              fontSize: 25,
+              fontWeight: "bold",
+              textAlign: "center",
+              letterSpacing: 3,
+            }}
           >
-            WELCOME BACK
+            {forgotPassword ? "RESET PASSWORD" : "WELCOME BACK"}
           </Text>
 
           <Text
-            style={[
-              styles.subtitle,
-              {
-                color: "#AAAAAA",
-                textAlign: "center",
-                marginBottom: 25,
-              },
-            ]}
+            style={{
+              color: "#AAAAAA",
+              textAlign: "center",
+              marginTop: 8,
+              marginBottom: 25,
+            }}
           >
-            Sign in to your NOIR account
+            {forgotPassword
+              ? "Create a new password for your account"
+              : "Sign in to your NOIR account"}
           </Text>
 
           {message ? (
-            <View style={styles.alertBox}>
-              <Text style={styles.alertText}>{message}</Text>
-            </View>
+            <Text
+              style={{
+                color: message.includes("updated")
+                  ? "#8BE28B"
+                  : "#FF7777",
+                textAlign: "center",
+                marginBottom: 15,
+              }}
+            >
+              {message}
+            </Text>
           ) : null}
 
-          <Text style={[styles.label, { color: "#FFFFFF" }]}>
+          <Text style={{ color: "#FFFFFF", marginBottom: 8 }}>
             EMAIL ADDRESS
           </Text>
 
           <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: "#171717",
-                color: "#FFFFFF",
-                borderColor: "#383838",
-                borderWidth: 1,
-              },
-            ]}
+            style={{ ...inputStyle, marginBottom: 18 }}
             placeholder="you@example.com"
             placeholderTextColor="#888888"
             value={email}
@@ -150,81 +261,215 @@ const handleLogin = async () => {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            returnKeyType="next"
           />
 
-          <Text style={[styles.label, { color: "#FFFFFF" }]}>
-            PASSWORD
-          </Text>
-
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: "#171717",
-                color: "#FFFFFF",
-                borderColor: "#383838",
-                borderWidth: 1,
-              },
-            ]}
-            placeholder="Enter your password"
-            placeholderTextColor="#888888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            returnKeyType="go"
-            onSubmitEditing={handleLogin}
-          />
-
-          <Pressable
-            style={[
-              styles.loginButton,
-              {
-                backgroundColor: "#FFFFFF",
-                marginTop: 15,
-              },
-            ]}
-            onPress={handleLogin}
-          >
-            <Text
-              style={[
-                styles.buttonText,
-                {
-                  color: "#000000",
-                  fontWeight: "bold",
-                  letterSpacing: 2,
-                },
-              ]}
-            >
-              SIGN IN
-            </Text>
-          </Pressable>
-
-          <View
-            style={[
-              styles.signupContainer,
-              { marginTop: 25 },
-            ]}
-          >
-            <Text style={[styles.accountText, { color: "#AAAAAA" }]}>
-              New here?
-            </Text>
-
-            <Pressable onPress={() => router.push("/signup")}>
-              <Text
-                style={[
-                  styles.signupText,
-                  {
-                    color: "#FFFFFF",
-                    fontWeight: "bold",
-                  },
-                ]}
-              >
-                {" "}Create account
+          {forgotPassword ? (
+            <>
+              <Text style={{ color: "#FFFFFF", marginBottom: 8 }}>
+                NEW PASSWORD
               </Text>
-            </Pressable>
-          </View>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#222222",
+                  borderWidth: 1,
+                  borderColor: "#555555",
+                  borderRadius: 8,
+                  marginBottom: 18,
+                }}
+              >
+                <TextInput
+                  style={{ flex: 1, color: "#FFFFFF", padding: 14 }}
+                  placeholder="Enter new password"
+                  placeholderTextColor="#888888"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                />
+
+                <Pressable
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                  style={{ padding: 12 }}
+                >
+                  <Ionicons
+                    name={showNewPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+              </View>
+
+              <Text style={{ color: "#FFFFFF", marginBottom: 8 }}>
+                CONFIRM NEW PASSWORD
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#222222",
+                  borderWidth: 1,
+                  borderColor: "#555555",
+                  borderRadius: 8,
+                  marginBottom: 20,
+                }}
+              >
+                <TextInput
+                  style={{ flex: 1, color: "#FFFFFF", padding: 14 }}
+                  placeholder="Confirm new password"
+                  placeholderTextColor="#888888"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+
+                <Pressable
+                  onPress={() =>
+                    setShowConfirmPassword(!showConfirmPassword)
+                  }
+                  style={{ padding: 12 }}
+                >
+                  <Ionicons
+                    name={
+                      showConfirmPassword
+                        ? "eye-off-outline"
+                        : "eye-outline"
+                    }
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={resetPassword}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  padding: 16,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#000000", fontWeight: "bold" }}>
+                  UPDATE PASSWORD
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setForgotPassword(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setMessage("");
+                }}
+                style={{ alignItems: "center", marginTop: 20 }}
+              >
+                <Text style={{ color: "#FFFFFF", fontWeight: "bold" }}>
+                  BACK TO LOGIN
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={{ color: "#FFFFFF", marginBottom: 8 }}>
+                PASSWORD
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#222222",
+                  borderWidth: 1,
+                  borderColor: "#555555",
+                  borderRadius: 8,
+                  marginBottom: 8,
+                }}
+              >
+                <TextInput
+                  style={{ flex: 1, color: "#FFFFFF", padding: 14 }}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#888888"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={{ padding: 12 }}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  setForgotPassword(true);
+                  setMessage("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+                style={{
+                  alignSelf: "flex-end",
+                  marginBottom: 20,
+                  marginTop: 8,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 13 }}>
+                  Forgot Password?
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleLogin}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  padding: 16,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#000000",
+                    fontWeight: "bold",
+                    letterSpacing: 2,
+                  }}
+                >
+                  SIGN IN
+                </Text>
+              </Pressable>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  marginTop: 25,
+                }}
+              >
+                <Text style={{ color: "#AAAAAA" }}>New here?</Text>
+
+                <Pressable onPress={() => router.push("/signup")}>
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontWeight: "bold",
+                      marginLeft: 5,
+                    }}
+                  >
+                    Create account
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
 
           <Text
             style={{
