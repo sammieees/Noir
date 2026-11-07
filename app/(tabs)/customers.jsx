@@ -1,13 +1,14 @@
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,24 +16,15 @@ export default function CustomersScreen() {
   const router = useRouter();
 
   const [customers, setCustomers] = useState([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const loadCustomers = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const savedUser = await AsyncStorage.getItem("user");
-      const loggedIn = await AsyncStorage.getItem("loggedIn");
+      const saved = await AsyncStorage.getItem("user");
 
-      // Check if user is logged in
-      if (!savedUser || loggedIn !== "true") {
+      if (!saved || JSON.parse(saved).role?.toLowerCase() !== "admin") {
         router.replace("/login");
-        return;
-      }
-
-      const currentUser = JSON.parse(savedUser);
-
-      // Only Admin can access this page
-      if (currentUser.role?.toLowerCase() !== "admin") {
-        router.replace("/(tabs)/products");
         return;
       }
 
@@ -40,16 +32,13 @@ export default function CustomersScreen() {
         (await AsyncStorage.getItem("users")) || "[]"
       );
 
-      // Get customer accounts only
-      const customerList = users.filter(
-        (user) => user.role?.toLowerCase() === "customer"
+      setCustomers(
+        users.filter(
+          user => user.role?.toLowerCase() === "customer"
+        )
       );
-
-      setCustomers(customerList);
-
     } catch (error) {
-      console.log("CUSTOMER LOAD ERROR:", error);
-      setCustomers([]);
+      console.log(error);
     } finally {
       setLoading(false);
     }
@@ -57,19 +46,38 @@ export default function CustomersScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadCustomers();
-    }, [loadCustomers])
+      load();
+    }, [load])
   );
 
-  const renderCustomer = ({ item, index }) => (
-    <View style={styles.card}>
+  const filtered = customers.filter(customer =>
+    `${customer.name || ""} ${customer.email || ""}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
+  const openDetails = (customer) => {
+    router.push({
+      pathname: "/(tabs)/customer-details",
+      params: {
+        email: customer.email || "",
+        id: String(customer.id || customer.userId || ""),
+      },
+    });
+  };
+
+  const renderCustomer = ({ item }) => (
+    <Pressable
+      style={styles.card}
+      onPress={() => openDetails(item)}
+    >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
           {(item.name || "C").charAt(0).toUpperCase()}
         </Text>
       </View>
 
-      <View style={styles.info}>
+      <View style={styles.customerInfo}>
         <Text style={styles.name}>
           {item.name || "Unnamed Customer"}
         </Text>
@@ -78,11 +86,11 @@ export default function CustomersScreen() {
           {item.email || "No email"}
         </Text>
 
-        <Text style={styles.number}>
-          CUSTOMER #{index + 1}
-        </Text>
+        <Text style={styles.status}>● Active</Text>
       </View>
-    </View>
+
+      <Text style={styles.arrow}>›</Text>
+    </Pressable>
   );
 
   return (
@@ -94,34 +102,46 @@ export default function CustomersScreen() {
         </Text>
       </View>
 
+      <View style={styles.searchBox}>
+        <Text style={styles.searchIcon}>⌕</Text>
+
+        <TextInput
+          style={styles.search}
+          placeholder="Search customer..."
+          value={search}
+          onChangeText={setSearch}
+        />
+      </View>
+
       <View style={styles.countCard}>
-        <Text style={styles.countLabel}>TOTAL CUSTOMERS</Text>
-        <Text style={styles.count}>{customers.length}</Text>
+        <Text style={styles.countLabel}>
+          TOTAL CUSTOMERS
+        </Text>
+
+        <Text style={styles.count}>
+          {customers.length}
+        </Text>
       </View>
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#111111" />
-          <Text style={styles.loadingText}>Loading customers...</Text>
-        </View>
+        <ActivityIndicator
+          size="large"
+          color="#111"
+          style={{ marginTop: 30 }}
+        />
       ) : (
         <FlatList
-          data={customers}
+          data={filtered}
           keyExtractor={(item, index) =>
             item.email || String(index)
           }
           renderItem={renderCustomer}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>
-                No customers yet
-              </Text>
-
-              <Text style={styles.emptyText}>
-                Registered customer accounts will appear here.
-              </Text>
-            </View>
+            <Text style={styles.empty}>
+              No customers found.
+            </Text>
           }
         />
       )}
@@ -132,112 +152,127 @@ export default function CustomersScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: "#F5F5F7",
   },
+
   header: {
     padding: 20,
-    paddingTop: 25,
   },
+
   title: {
     fontSize: 27,
     fontWeight: "900",
     color: "#111",
   },
+
   subtitle: {
-    color: "#777",
     fontSize: 12,
+    color: "#777",
+    marginTop: 4,
+  },
+
+  searchBox: {
+    marginHorizontal: 18,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+  },
+
+  searchIcon: {
+    fontSize: 23,
+    color: "#555",
+  },
+
+  search: {
+    flex: 1,
+    paddingLeft: 10,
+    color: "#111",
+  },
+
+  countCard: {
+    backgroundColor: "#111",
+    margin: 18,
+    padding: 20,
+    borderRadius: 16,
+  },
+
+  countLabel: {
+    color: "#ccc",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  count: {
+    color: "#fff",
+    fontSize: 30,
+    fontWeight: "900",
     marginTop: 5,
   },
-  countCard: {
-    marginHorizontal: 20,
-    backgroundColor: "#111",
-    borderRadius: 13,
-    padding: 20,
-    marginBottom: 15,
-  },
-  countLabel: {
-    color: "#AAA",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  count: {
-    color: "#FFF",
-    fontSize: 32,
-    fontWeight: "900",
-    marginTop: 8,
-  },
+
   list: {
-    padding: 20,
-    paddingTop: 5,
-    flexGrow: 1,
+    paddingHorizontal: 18,
+    paddingBottom: 25,
   },
+
   card: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderRadius: 15,
     padding: 15,
     marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
+    gap: 13,
   },
+
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 25,
     backgroundColor: "#111",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
+
   avatarText: {
-    color: "#FFF",
+    color: "#fff",
     fontSize: 20,
     fontWeight: "900",
   },
-  info: {
+
+  customerInfo: {
     flex: 1,
-    marginLeft: 13,
   },
+
   name: {
-    color: "#111",
-    fontWeight: "900",
     fontSize: 14,
+    fontWeight: "800",
+    color: "#111",
   },
+
   email: {
-    color: "#777",
     fontSize: 11,
+    color: "#777",
     marginTop: 4,
   },
-  number: {
-    color: "#999",
-    fontSize: 9,
-    fontWeight: "800",
+
+  status: {
+    fontSize: 10,
+    color: "#23834A",
     marginTop: 5,
   },
-  empty: {
-    backgroundColor: "#FFF",
-    padding: 25,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  emptyTitle: {
-    fontWeight: "900",
-    color: "#111",
-  },
-  emptyText: {
+
+  arrow: {
+    fontSize: 27,
     color: "#888",
-    fontSize: 11,
+  },
+
+  empty: {
     textAlign: "center",
-    marginTop: 7,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
+    padding: 30,
     color: "#777",
-    marginTop: 10,
-    fontSize: 12,
   },
 });

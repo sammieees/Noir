@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-
 import {
   ActivityIndicator,
   View,
@@ -29,7 +28,10 @@ export default function TabLayout() {
       const user = JSON.parse(savedUser);
       const currentRole = user.role?.toLowerCase();
 
-      if (currentRole !== "admin" && currentRole !== "customer") {
+      if (
+        currentRole !== "admin" &&
+        currentRole !== "customer"
+      ) {
         setRole(null);
         router.replace("/login");
         return;
@@ -59,7 +61,10 @@ export default function TabLayout() {
           backgroundColor: "#FFFFFF",
         }}
       >
-        <ActivityIndicator size="large" color="#111111" />
+        <ActivityIndicator
+          size="large"
+          color="#111111"
+        />
       </View>
     );
   }
@@ -90,16 +95,18 @@ export default function TabLayout() {
     },
   };
 
-  const icon = (name, focused) => (
+  // Reusable tab icon
+  const renderIcon = (iconName, focused, color) => (
     <Ionicons
-      name={focused ? name : `${name}-outline`}
-      size={22}
-      color={focused ? "#111111" : "#999999"}
+      name={iconName}
+      size={23}
+      color={color || (focused ? "#111111" : "#999999")}
     />
   );
 
   return (
     <Tabs screenOptions={tabStyle}>
+
       {/* ADMIN TABS */}
 
       <Tabs.Screen
@@ -107,7 +114,12 @@ export default function TabLayout() {
         options={{
           title: "Dashboard",
           href: isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("grid", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "grid" : "grid-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -116,7 +128,12 @@ export default function TabLayout() {
         options={{
           title: "Products",
           href: isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("cube", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "cube" : "cube-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -125,7 +142,12 @@ export default function TabLayout() {
         options={{
           title: "Sales",
           href: isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("bar-chart", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "bar-chart" : "bar-chart-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -134,7 +156,12 @@ export default function TabLayout() {
         options={{
           title: "Customers",
           href: isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("people", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "people" : "people-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -145,7 +172,12 @@ export default function TabLayout() {
         options={{
           title: "Shop",
           href: !isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("shirt", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "shirt" : "shirt-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -154,7 +186,12 @@ export default function TabLayout() {
         options={{
           title: "Wishlist",
           href: !isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("heart", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "heart" : "heart-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -163,7 +200,12 @@ export default function TabLayout() {
         options={{
           title: "My Cart",
           href: !isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("bag-handle", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "bag-handle" : "bag-handle-outline",
+              focused,
+              color
+            ),
         }}
       />
 
@@ -172,24 +214,48 @@ export default function TabLayout() {
         options={{
           title: "My Orders",
           href: !isAdmin ? undefined : null,
-          tabBarIcon: ({ focused }) => icon("receipt", focused),
+          tabBarIcon: ({ focused, color }) =>
+            renderIcon(
+              focused ? "receipt" : "receipt-outline",
+              focused,
+              color
+            ),
         }}
       />
 
-    <Tabs.Screen
-  name="accounts"
-  options={{
-    title: "Account",
-    href: undefined,
-    tabBarIcon: ({ focused, color }) => (
-      <Ionicons
-        name={focused ? "person-circle" : "person-circle-outline"}
-        size={22}
-        color={color}
+      {/* ACCOUNT TAB */}
+
+      <Tabs.Screen
+        name="accounts"
+        options={{
+          title: "Account",
+          href: undefined,
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              name="person"
+              size={25}
+              color={color || "#999999"}
+            />
+          ),
+        }}
       />
-    ),
+      
+{/* HIDE ADMIN ORDERS FROM BOTTOM TAB */}
+<Tabs.Screen
+  name="admin-orders"
+  options={{
+    href: null,
   }}
 />
+
+{/* HIDE CUSTOMER DETAILS FROM BOTTOM TAB */}
+<Tabs.Screen
+  name="customer-details"
+  options={{
+    href: null,
+  }}
+/>
+
     </Tabs>
   );
 }

@@ -1,556 +1,352 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-
 import {
-  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountScreen() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [contactNumber, setContactNumber] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const loadProfile = useCallback(async () => {
+  const loadUser = useCallback(async () => {
     try {
-      setLoading(true);
-
-      const savedUser = await AsyncStorage.getItem("user");
-      const currentUser = savedUser ? JSON.parse(savedUser) : null;
-
-      if (!currentUser) {
-        router.replace("/login");
-        return;
-      }
-
-      setUser(currentUser);
-      setName(currentUser.name || "");
-      setEmail(currentUser.email || "");
-      setContactNumber(
-        currentUser.contactNumber || currentUser.phone || ""
-      );
-      setDeliveryAddress(currentUser.deliveryAddress || "");
+      const raw = await AsyncStorage.getItem("user");
+      setUser(raw ? JSON.parse(raw) : null);
     } catch (error) {
-      console.log("LOAD PROFILE ERROR:", error);
-      Alert.alert("Error", "Unable to load your profile.");
-    } finally {
-      setLoading(false);
+      console.log("ACCOUNT ERROR:", error);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
-    }, [loadProfile])
+      loadUser();
+    }, [loadUser])
   );
-
-  const isAdmin = user?.role?.toLowerCase() === "admin";
-
-  const saveProfile = async () => {
-    if (!name.trim() || !contactNumber.trim()) {
-      Alert.alert("Required", "Please complete all required fields.");
-      return;
-    }
-
-    if (!isAdmin && !deliveryAddress.trim()) {
-      Alert.alert("Required", "Please enter your delivery address.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const updatedUser = {
-        ...user,
-        name: name.trim(),
-        contactNumber: contactNumber.trim(),
-      };
-
-      // Only customers need a delivery address
-      if (!isAdmin) {
-        updatedUser.deliveryAddress = deliveryAddress.trim();
-      }
-
-      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-
-      // Update registered customer information
-      if (!isAdmin) {
-        const savedUsers = await AsyncStorage.getItem("users");
-        const users = savedUsers ? JSON.parse(savedUsers) : [];
-
-        const updatedUsers = users.map((registeredUser) => {
-          if (
-            registeredUser.email?.toLowerCase() ===
-            user.email?.toLowerCase()
-          ) {
-            return {
-              ...registeredUser,
-              name: name.trim(),
-              contactNumber: contactNumber.trim(),
-              deliveryAddress: deliveryAddress.trim(),
-            };
-          }
-
-          return registeredUser;
-        });
-
-        await AsyncStorage.setItem("users", JSON.stringify(updatedUsers));
-      }
-
-      setUser(updatedUser);
-      Alert.alert("Success", "Your profile has been updated.");
-    } catch (error) {
-      console.log("SAVE PROFILE ERROR:", error);
-      Alert.alert("Error", "Unable to save your profile.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const changePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert("Required", "Please complete all password fields.");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert("Invalid Password", "Use at least 6 characters.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert("Password Error", "New passwords do not match.");
-      return;
-    }
-
-    try {
-      // Admin password is stored separately
-      if (isAdmin) {
-        const savedAdminPassword = await AsyncStorage.getItem("adminPassword");
-        const correctPassword = savedAdminPassword || "admin123";
-
-        if (currentPassword !== correctPassword) {
-          Alert.alert("Incorrect Password", "Your current password is incorrect.");
-          return;
-        }
-
-        await AsyncStorage.setItem("adminPassword", newPassword);
-
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-
-        Alert.alert("Success", "Admin password has been changed.");
-        return;
-      }
-
-      const savedUsers = await AsyncStorage.getItem("users");
-      const users = savedUsers ? JSON.parse(savedUsers) : [];
-
-      const userIndex = users.findIndex(
-        (item) =>
-          item.email?.toLowerCase() === user.email?.toLowerCase()
-      );
-
-      if (userIndex === -1) {
-        Alert.alert("Error", "Registered account was not found.");
-        return;
-      }
-
-      if (users[userIndex].password !== currentPassword) {
-        Alert.alert("Incorrect Password", "Your current password is incorrect.");
-        return;
-      }
-
-      users[userIndex].password = newPassword;
-
-      await AsyncStorage.setItem("users", JSON.stringify(users));
-
-      const updatedUser = {
-        ...user,
-        password: newPassword,
-      };
-
-      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-
-      Alert.alert("Success", "Your password has been changed.");
-    } catch (error) {
-      console.log("CHANGE PASSWORD ERROR:", error);
-      Alert.alert("Error", "Unable to change your password.");
-    }
-  };
 
   const logout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.multiRemove(["user", "loggedIn"]);
-          router.replace("/login");
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.multiRemove(["user", "loggedIn"]);
+            router.replace("/login");
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  const passwordInput = (
-    label,
-    value,
-    setValue,
-    visible,
-    setVisible,
-    placeholder
-  ) => (
-    <View>
-      <Text style={styles.label}>{label}</Text>
-
-      <View style={styles.passwordBox}>
-        <TextInput
-          style={styles.passwordInput}
-          value={value}
-          onChangeText={setValue}
-          placeholder={placeholder}
-          placeholderTextColor="#999999"
-          secureTextEntry={!visible}
-        />
-
-        <Pressable
-          onPress={() => setVisible(!visible)}
-          style={styles.eyeButton}
-        >
-          <Ionicons
-            name={visible ? "eye-off-outline" : "eye-outline"}
-            size={22}
-            color="#111111"
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
-
-  if (loading) {
+  if (!user) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#111111" />
-        <Text style={styles.loadingText}>Loading your account...</Text>
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.name}>Please log in again.</Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => router.replace("/login")}
+        >
+          <Text style={styles.buttonText}>Go to Login</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
 
-  if (!user) return null;
+  const name = user.name || user.fullName || "NOIR User";
+  const email = user.email || "No email";
+  const isAdmin = String(user.role || "").toLowerCase() === "admin";
+
+  const customerMenu = [
+    {
+      icon: "receipt-outline",
+      label: "My Orders",
+      action: () => router.push("/(tabs)/orders"),
+    },
+    {
+      icon: "location-outline",
+      label: "My Addresses",
+      action: () => router.push("/my-addresses"),
+    },
+    {
+      icon: "lock-closed-outline",
+      label: "Change Password",
+      action: () => router.push("/change-password"),
+    },
+    {
+      icon: "help-circle-outline",
+      label: "Help and Support",
+      action: () => router.push("/help-support"),
+    },
+  ];
+
+  const adminMenu = [
+    {
+      icon: "person-outline",
+      label: "Edit Profile",
+      action: () => router.push("/edit-profile"),
+    },
+    {
+      icon: "lock-closed-outline",
+      label: "Change Password",
+      action: () => router.push("/change-password"),
+    },
+  ];
+
+  const menu = isAdmin ? adminMenu : customerMenu;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>MY ACCOUNT</Text>
-            <Text style={styles.subtitle}>Manage your NOIR profile</Text>
-          </View>
-
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={42} color="#111111" />
-            </View>
-
-            <Text style={styles.profileName}>
-              {name || "NOIR User"}
-            </Text>
-
-            <Text style={styles.profileEmail}>{email}</Text>
-
-            <Text style={styles.roleText}>
-              {user.role?.toUpperCase() || "CUSTOMER"}
+    <SafeAreaView style={styles.page}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>My Account</Text>
+            <Text style={styles.subtitle}>
+              {isAdmin
+                ? "Admin Profile"
+                : "Manage your account settings"}
             </Text>
           </View>
 
-          <View style={styles.formCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="person-outline" size={21} color="#111111" />
-              <Text style={styles.sectionTitle}>Personal Information</Text>
-            </View>
+          <Ionicons name="settings-outline" size={24} color="#111" />
+        </View>
 
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your full name"
-              placeholderTextColor="#999999"
-            />
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {name.trim().charAt(0).toUpperCase()}
+            </Text>
+          </View>
 
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={email}
-              editable={false}
-              placeholder="Email address"
-              placeholderTextColor="#999999"
-            />
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{name}</Text>
+            <Text style={styles.email}>{email}</Text>
 
-            <Text style={styles.label}>Contact Number</Text>
-            <TextInput
-              style={styles.input}
-              value={contactNumber}
-              onChangeText={setContactNumber}
-              placeholder="Enter your contact number"
-              placeholderTextColor="#999999"
-              keyboardType="phone-pad"
-            />
-
-            {!isAdmin && (
-              <>
-                <Text style={styles.label}>Delivery Address</Text>
-                <TextInput
-                  style={[styles.input, styles.addressInput]}
-                  value={deliveryAddress}
-                  onChangeText={setDeliveryAddress}
-                  placeholder="Enter your delivery address"
-                  placeholderTextColor="#999999"
-                  multiline
-                  textAlignVertical="top"
-                />
-              </>
+            {isAdmin && (
+              <Text style={styles.role}>Administrator</Text>
             )}
-
-            <Pressable
-              style={[styles.saveButton, saving && styles.disabledButton]}
-              onPress={saveProfile}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.buttonText}>SAVE CHANGES</Text>
-                </>
-              )}
-            </Pressable>
           </View>
 
+          {!isAdmin && (
+            <Pressable
+              style={styles.editButton}
+              onPress={() => router.push("/edit-profile")}
+            >
+              <Text style={styles.editText}>Edit Profile</Text>
+            </Pressable>
+          )}
+        </View>
 
-          <Pressable style={styles.logoutButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={20} color="#111111" />
-            <Text style={styles.logoutButtonText}>LOGOUT</Text>
+        {isAdmin && (
+          <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{name}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{email}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Role</Text>
+              <Text style={styles.infoValue}>Administrator</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.menu}>
+          {menu.map((item) => (
+            <Pressable
+              key={item.label}
+              style={styles.menuRow}
+              onPress={item.action}
+            >
+              <Ionicons
+                name={item.icon}
+                size={21}
+                color="#111"
+              />
+              <Text style={styles.menuText}>{item.label}</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={19}
+                color="#888"
+              />
+            </Pressable>
+          ))}
+
+          {!isAdmin && (
+            <Pressable
+              style={styles.menuRow}
+              onPress={() => router.push("/about-noir")}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={21}
+                color="#111"
+              />
+              <Text style={styles.menuText}>About NOIR</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={19}
+                color="#888"
+              />
+            </Pressable>
+          )}
+
+          <Pressable style={styles.logoutRow} onPress={logout}>
+            <Ionicons name="log-out-outline" size={21} color="#d22" />
+            <Text style={styles.logoutText}>Logout</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={19}
+              color="#d22"
+            />
           </Pressable>
+        </View>
 
-          <Text style={styles.footerText}>NOIR MEN'S WEAR</Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Text style={styles.footer}>NOIR · LOOK GOOD. FEEL GOOD.</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: { flex: 1, backgroundColor: "#f6f6f6" },
+  content: { paddingBottom: 35 },
+  center: {
     flex: 1,
-    backgroundColor: "#eef2f7",
-  },
-  loadingContainer: {
-    flex: 1,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#eef2f7",
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#666666",
-  },
-  scrollContent: {
-    paddingBottom: 30,
+    padding: 20,
   },
   header: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    backgroundColor: "#fff",
+    padding: 19,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: "#111111",
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#777777",
-    marginTop: 4,
-  },
+  title: { fontSize: 24, fontWeight: "900", color: "#111" },
+  subtitle: { fontSize: 12, color: "#888", marginTop: 4 },
   profileCard: {
-    backgroundColor: "#111111",
-    margin: 15,
-    borderRadius: 15,
-    padding: 25,
+    backgroundColor: "#fff",
+    margin: 14,
+    padding: 16,
+    borderRadius: 14,
+    flexDirection: "row",
     alignItems: "center",
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 45,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
+    width: 65,
+    height: 65,
+    borderRadius: 33,
+    backgroundColor: "#111",
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
   },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#FFFFFF",
-  },
-  profileEmail: {
-    fontSize: 13,
-    color: "#CCCCCC",
+  avatarText: { fontSize: 29, color: "#fff", fontWeight: "900" },
+  profileInfo: { flex: 1, marginLeft: 12 },
+  profileName: { fontSize: 16, fontWeight: "900", color: "#111" },
+  email: { fontSize: 11, color: "#777", marginTop: 4 },
+  role: {
+    fontSize: 10,
+    color: "#111",
+    fontWeight: "800",
     marginTop: 5,
   },
-  roleText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    marginTop: 12,
+  editButton: {
+    backgroundColor: "#111",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
-  formCard: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 18,
-    borderRadius: 15,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    marginBottom: 12,
+  editText: { color: "#fff", fontSize: 10, fontWeight: "900" },
+  infoCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 14,
+    marginBottom: 14,
+    padding: 16,
+    borderRadius: 13,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 14,
+    color: "#111",
     fontWeight: "900",
-    color: "#111111",
+    marginBottom: 12,
   },
-  label: {
+  infoRow: {
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  infoLabel: { color: "#888", fontSize: 12 },
+  infoValue: {
+    color: "#111",
     fontSize: 12,
     fontWeight: "800",
-    color: "#333333",
-    marginBottom: 7,
-    marginTop: 12,
   },
-  input: {
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#eeeeee",
-    borderRadius: 9,
-    paddingHorizontal: 13,
-    paddingVertical: 13,
-    fontSize: 14,
-    color: "#111111",
+  menu: {
+    marginHorizontal: 14,
+    backgroundColor: "#fff",
+    borderRadius: 13,
+    paddingHorizontal: 15,
   },
-  disabledInput: {
-    color: "#888888",
-    backgroundColor: "#eeeeee",
-  },
-  addressInput: {
-    minHeight: 90,
-  },
-  passwordBox: {
+  menuRow: {
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#eeeeee",
-    borderRadius: 9,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  passwordInput: {
+  menuText: {
     flex: 1,
-    paddingHorizontal: 13,
-    paddingVertical: 13,
-    fontSize: 14,
-    color: "#111111",
+    fontSize: 13,
+    color: "#111",
+    fontWeight: "700",
   },
-  eyeButton: {
-    padding: 12,
-  },
-  saveButton: {
+  logoutRow: {
+    minHeight: 56,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#111111",
-    paddingVertical: 16,
-    borderRadius: 9,
-    marginTop: 22,
+    gap: 12,
   },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  logoutButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 15,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#111111",
-    paddingVertical: 15,
-    borderRadius: 9,
-  },
-  logoutButtonText: {
-    color: "#111111",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  footerText: {
-    textAlign: "center",
-    color: "#999999",
-    fontSize: 10,
+  logoutText: {
+    flex: 1,
+    color: "#d22",
     fontWeight: "800",
-    letterSpacing: 3,
+    fontSize: 13,
+  },
+  footer: {
+    textAlign: "center",
+    color: "#aaa",
+    fontSize: 10,
+    letterSpacing: 2,
     marginTop: 25,
   },
+  button: {
+    backgroundColor: "#111",
+    padding: 13,
+    borderRadius: 9,
+    marginTop: 15,
+  },
+  buttonText: { color: "#fff", fontWeight: "900" },
 });

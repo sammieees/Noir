@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { CartProvider } from "./CartContext";
+import { CartProvider } from "../app/CartContext";
 
 export default function RootLayout() {
   return (

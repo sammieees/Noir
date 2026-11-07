@@ -1,8 +1,6 @@
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-
 import {
   Pressable,
   ScrollView,
@@ -10,56 +8,51 @@ import {
   Text,
   View,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { getProducts, getSales, money } from "../../lib/store";
 
-export default function AdminDashboard() {
+export default function Dashboard() {
   const router = useRouter();
 
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [adminName, setAdminName] = useState("NOIR Admin");
+  const [admin, setAdmin] = useState("NOIR Admin");
 
-  // Check account and load dashboard data
-  const loadDashboard = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const savedUser = await AsyncStorage.getItem("user");
-      const loggedIn = await AsyncStorage.getItem("loggedIn");
+      const saved = await AsyncStorage.getItem("user");
 
-      if (!savedUser || loggedIn !== "true") {
+      if (!saved) {
         router.replace("/login");
         return;
       }
 
-      const currentUser = JSON.parse(savedUser);
+      const user = JSON.parse(saved);
 
-      // Only Admin can access this dashboard
-      if (currentUser.role?.toLowerCase() !== "admin") {
+      if (user.role?.toLowerCase() !== "admin") {
         router.replace("/(tabs)/products");
         return;
       }
 
-      const productData = await getProducts();
-      const salesData = await getSales();
+      const [p, s, rawUsers] = await Promise.all([
+        getProducts(),
+        getSales(),
+        AsyncStorage.getItem("users"),
+      ]);
 
-      const usersData = JSON.parse(
-        (await AsyncStorage.getItem("users")) || "[]"
-      );
+      setProducts(p || []);
+      setSales(s || []);
 
-      setProducts(productData);
-      setSales(salesData);
+      const users = JSON.parse(rawUsers || "[]");
 
       setCustomers(
-        usersData.filter(
-          (user) => user.role?.toLowerCase() !== "admin"
+        users.filter(
+          (x) => x.role?.toLowerCase() === "customer"
         )
       );
 
-      setAdminName(currentUser.name || "NOIR Admin");
-
+      setAdmin(user.name || "NOIR Admin");
     } catch (error) {
       console.log("DASHBOARD ERROR:", error);
     }
@@ -67,195 +60,209 @@ export default function AdminDashboard() {
 
   useFocusEffect(
     useCallback(() => {
-      loadDashboard();
-    }, [loadDashboard])
+      load();
+    }, [load])
   );
 
-  // Dashboard calculations
-  const totalRevenue = sales.reduce(
-    (sum, sale) => sum + Number(sale.total || 0),
+  const revenue = sales.reduce(
+    (sum, item) => sum + Number(item.total || 0),
     0
   );
 
-  const lowStock = products.filter(
-    (product) => Number(product.stock || 0) <= 5
-  );
-
-  const totalStock = products.reduce(
-    (sum, product) => sum + Number(product.stock || 0),
+  const stock = products.reduce(
+    (sum, item) => sum + Number(item.stock || 0),
     0
   );
 
-  const StatCard = ({ title, value, subtitle }) => (
-    <View style={styles.statCard}>
-      <Text style={styles.statTitle}>{title}</Text>
+  const low = products.filter(
+    (item) => Number(item.stock || 0) <= 5
+  );
+
+  const stat = (label, value, icon) => (
+    <View style={styles.stat} key={label}>
+      <Text style={styles.statIcon}>{icon}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statSubtitle}>{subtitle}</Text>
     </View>
+  );
+
+  const action = (label, icon, route) => (
+    <Pressable
+      key={label}
+      style={({ pressed }) => [
+        styles.action,
+        pressed && styles.pressed,
+      ]}
+      onPress={() => router.push(route)}
+    >
+      <Text style={styles.actionIcon}>{icon}</Text>
+      <Text style={styles.actionText}>{label}</Text>
+    </Pressable>
   );
 
   return (
     <SafeAreaView style={styles.page}>
-      <ScrollView contentContainerStyle={styles.content}>
-
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* HEADER */}
-        <View style={styles.header}>
+
+        <View style={styles.top}>
           <View>
             <Text style={styles.brand}>NOIR</Text>
-            <Text style={styles.adminLabel}>ADMIN DASHBOARD</Text>
+            <Text style={styles.sub}>Admin Dashboard</Text>
           </View>
+
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => router.push("/(tabs)/accounts")}
+          >
+            <Text style={styles.bell}>⚙</Text>
+          </Pressable>
         </View>
 
         {/* WELCOME */}
+
         <View style={styles.welcome}>
-          <Text style={styles.welcomeTitle}>Welcome back,</Text>
-          <Text style={styles.adminName}>{adminName}</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Here is your store overview.
+          <Text style={styles.welcomeSmall}>
+            Welcome back,
+          </Text>
+
+          <Text style={styles.welcomeName}>
+            {admin}
+          </Text>
+
+          <Text style={styles.welcomeSmall}>
+            Here's your store overview.
           </Text>
         </View>
 
-        {/* STORE OVERVIEW */}
-        <Text style={styles.sectionTitle}>STORE OVERVIEW</Text>
+        {/* STATISTICS */}
 
         <View style={styles.grid}>
-          <StatCard
-            title="TOTAL PRODUCTS"
-            value={products.length}
-            subtitle="Products in catalog"
-          />
-
-          <StatCard
-            title="TOTAL SALES"
-            value={sales.length}
-            subtitle="Recorded transactions"
-          />
-
-          <StatCard
-            title="TOTAL REVENUE"
-            value={money(totalRevenue)}
-            subtitle="Recorded sales value"
-          />
-
-          <StatCard
-            title="CUSTOMERS"
-            value={customers.length}
-            subtitle="Registered accounts"
-          />
-
-          <StatCard
-            title="TOTAL STOCK"
-            value={totalStock}
-            subtitle="Available pieces"
-          />
-
-          <StatCard
-            title="LOW STOCK"
-            value={lowStock.length}
-            subtitle="Products with 5 or fewer"
-          />
+          {stat("Total Products", products.length, "▣")}
+          {stat("Total Revenue", money(revenue), "₱")}
+          {stat("Total Sales", sales.length, "▥")}
+          {stat("Customers", customers.length, "♟")}
+          {stat("Total Stock", stock, "□")}
+          {stat("Low Stock", low.length, "⚠")}
         </View>
 
         {/* QUICK ACTIONS */}
-        <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+
+        <Text style={styles.heading}>
+          Quick Actions
+        </Text>
 
         <View style={styles.actions}>
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => router.push("/(tabs)/inventory")}
-          >
-            <Text style={styles.actionTitle}>Manage Products</Text>
-            <Text style={styles.actionSubtitle}>
-              Add, edit, and delete products
-            </Text>
-          </Pressable>
+          {action(
+            "Manage Products",
+            "▣",
+            "/(tabs)/inventory"
+          )}
+
+          {action(
+            "Manage Orders",
+            "▤",
+            "/(tabs)/admin-orders"
+          )}
+
+          {action(
+            "View Sales",
+            "↗",
+            "/(tabs)/sales"
+          )}
+
+          {action(
+            "Manage Customers",
+            "♟",
+            "/(tabs)/customers"
+          )}
+
+          {action(
+            "Account Settings",
+            "⚙",
+            "/(tabs)/accounts"
+          )}
+        </View>
+
+        {/* RECENT ACTIVITY */}
+
+        <View style={styles.sectionRow}>
+          <Text style={styles.heading}>
+            Recent Activity
+          </Text>
 
           <Pressable
-            style={styles.actionButton}
             onPress={() => router.push("/(tabs)/sales")}
           >
-            <Text style={styles.actionTitle}>View Sales</Text>
-            <Text style={styles.actionSubtitle}>
-              Check recorded transactions
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => router.push("/(tabs)/customers")}
-          >
-            <Text style={styles.actionTitle}>Manage Customers</Text>
-            <Text style={styles.actionSubtitle}>
-              View registered customers
-            </Text>
+            <Text style={styles.see}>See All ›</Text>
           </Pressable>
         </View>
 
-        {/* LOW STOCK ALERTS */}
-        <View style={styles.lowStockHeader}>
-          <Text style={styles.sectionTitle}>LOW STOCK ALERTS</Text>
-          <Text style={styles.warningCount}>
-            {lowStock.length} ITEMS
+        {sales.length > 0 ? (
+          [...sales]
+            .reverse()
+            .slice(0, 4)
+            .map((s, i) => (
+              <View
+                key={`${s.id || "sale"}-${i}`}
+                style={styles.activity}
+              >
+                <Text style={styles.activityIcon}>▣</Text>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.activityName}>
+                    {s.productName || "New Sale"}
+                  </Text>
+
+                  <Text style={styles.activityDate}>
+                    {s.date
+                      ? new Date(s.date).toLocaleString()
+                      : "Recently"}
+                  </Text>
+                </View>
+
+                <Text style={styles.amount}>
+                  {money(s.total)}
+                </Text>
+              </View>
+            ))
+        ) : (
+          <Text style={styles.empty}>
+            No sales activity yet.
           </Text>
-        </View>
+        )}
 
-        {lowStock.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              All products have enough stock.
-            </Text>
-          </View>
-        ) : (
-          lowStock.map((product) => (
-            <View key={product.id} style={styles.stockCard}>
+        {/* LOW STOCK PRODUCTS */}
+
+        <Text style={styles.heading}>
+          Low Stock Products
+        </Text>
+
+        {low.length > 0 ? (
+          low.map((p, index) => (
+            <View
+              key={`${p.id || p.name || "product"}-${index}`}
+              style={styles.activity}
+            >
               <View style={{ flex: 1 }}>
-                <Text style={styles.stockName}>
-                  {product.name}
-                </Text>
-
-                <Text style={styles.stockCategory}>
-                  {product.category || "General"}
+                <Text style={styles.activityName}>
+                  {p.name}
                 </Text>
               </View>
 
-              <Text style={styles.stockNumber}>
-                {product.stock} left
+              <Text style={styles.low}>
+                {p.stock} left
               </Text>
             </View>
           ))
-        )}
-
-        {/* RECENT TRANSACTIONS */}
-        <Text style={styles.sectionTitle}>RECENT TRANSACTIONS</Text>
-
-        {sales.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              No transactions recorded yet.
-            </Text>
-          </View>
         ) : (
-          sales.slice(-5).reverse().map((sale) => (
-            <View key={sale.id} style={styles.saleCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.saleName}>
-                  {sale.productName || "Product"}
-                </Text>
-
-                <Text style={styles.saleDate}>
-                  {sale.date
-                    ? new Date(sale.date).toLocaleDateString()
-                    : "No date"}
-                </Text>
-              </View>
-
-              <Text style={styles.saleAmount}>
-                {money(sale.total)}
-              </Text>
-            </View>
-          ))
+          <Text style={styles.empty}>
+            All products have enough stock.
+          </Text>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -264,208 +271,199 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#F4F4F4",
+    backgroundColor: "#f5f5f7",
   },
 
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 18,
+    paddingBottom: 30,
   },
 
-  header: {
+  top: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 18,
   },
 
   brand: {
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: "900",
-    letterSpacing: 5,
+    letterSpacing: 3,
     color: "#111",
   },
 
-  adminLabel: {
-    fontSize: 10,
+  sub: {
     color: "#777",
-    letterSpacing: 2,
-    marginTop: 4,
-    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  settingsButton: {
+    width: 42,
+    height: 42,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  bell: {
+    fontSize: 22,
+    color: "#111",
   },
 
   welcome: {
     backgroundColor: "#111",
-    padding: 22,
-    borderRadius: 16,
-    marginBottom: 25,
+    borderRadius: 17,
+    padding: 21,
+    marginBottom: 18,
   },
 
-  welcomeTitle: {
-    color: "#AAA",
-    fontSize: 14,
-  },
-
-  adminName: {
-    color: "#FFF",
-    fontSize: 25,
-    fontWeight: "900",
-    marginTop: 5,
-  },
-
-  welcomeSubtitle: {
-    color: "#AAA",
+  welcomeSmall: {
+    color: "#ddd",
     fontSize: 12,
-    marginTop: 8,
   },
 
-  sectionTitle: {
-    color: "#111",
-    fontSize: 13,
+  welcomeName: {
+    color: "#fff",
+    fontSize: 23,
     fontWeight: "900",
-    letterSpacing: 1.5,
-    marginBottom: 13,
-    marginTop: 10,
+    marginVertical: 5,
   },
 
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 25,
+    gap: 10,
+    marginBottom: 18,
   },
 
-  statCard: {
+  stat: {
     width: "48%",
     flexGrow: 1,
-    backgroundColor: "#FFF",
-    padding: 16,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 100,
   },
 
-  statTitle: {
+  statIcon: {
+    fontSize: 21,
+    color: "#111",
+  },
+
+  statLabel: {
+    fontSize: 11,
     color: "#777",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    marginTop: 7,
   },
 
   statValue: {
-    color: "#111",
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "900",
-    marginTop: 10,
+    color: "#111",
+    marginTop: 3,
   },
 
-  statSubtitle: {
-    color: "#888",
-    fontSize: 10,
-    marginTop: 5,
+  heading: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#111",
+    marginTop: 10,
+    marginBottom: 11,
   },
 
   actions: {
-    gap: 10,
-    marginBottom: 25,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 9,
+    marginBottom: 15,
   },
 
-  actionButton: {
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    padding: 17,
-    borderRadius: 12,
+  action: {
+    backgroundColor: "#fff",
+    width: "48%",
+    flexGrow: 1,
+    borderRadius: 13,
+    padding: 15,
+    alignItems: "center",
+    minHeight: 85,
+    justifyContent: "center",
   },
 
-  actionTitle: {
+  pressed: {
+    opacity: 0.65,
+    backgroundColor: "#eeeeee",
+  },
+
+  actionIcon: {
+    fontSize: 25,
     color: "#111",
-    fontSize: 14,
-    fontWeight: "900",
   },
 
-  actionSubtitle: {
-    color: "#777",
+  actionText: {
     fontSize: 11,
-    marginTop: 5,
+    fontWeight: "700",
+    color: "#222",
+    marginTop: 7,
+    textAlign: "center",
   },
 
-  lowStockHeader: {
+  sectionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
-  warningCount: {
-    color: "#B45309",
-    fontSize: 10,
-    fontWeight: "900",
-  },
-
-  stockCard: {
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  stockName: {
-    color: "#111",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-
-  stockCategory: {
-    color: "#888",
-    fontSize: 11,
-    marginTop: 4,
-  },
-
-  stockNumber: {
-    color: "#B45309",
-    fontWeight: "900",
+  see: {
     fontSize: 12,
+    color: "#333",
   },
 
-  emptyCard: {
-    backgroundColor: "#FFF",
-    padding: 20,
+  activity: {
+    backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 20,
-  },
-
-  emptyText: {
-    color: "#777",
-    fontSize: 12,
-    textAlign: "center",
-  },
-
-  saleCard: {
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 10,
+    padding: 13,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
+    gap: 11,
   },
 
-  saleName: {
+  activityIcon: {
+    fontSize: 19,
     color: "#111",
+  },
+
+  activityName: {
     fontSize: 13,
     fontWeight: "800",
+    color: "#111",
   },
 
-  saleDate: {
-    color: "#888",
+  activityDate: {
     fontSize: 10,
+    color: "#888",
     marginTop: 4,
   },
 
-  saleAmount: {
-    color: "#111",
+  amount: {
     fontWeight: "900",
     fontSize: 13,
+    color: "#111",
+  },
+
+  low: {
+    color: "#c47722",
+    fontWeight: "800",
+  },
+
+  empty: {
+    backgroundColor: "#fff",
+    padding: 17,
+    borderRadius: 12,
+    color: "#777",
+    textAlign: "center",
+    marginBottom: 10,
   },
 });

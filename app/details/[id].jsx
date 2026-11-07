@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useCart } from "../../app/CartContext";
 import { getProducts, money } from "../../lib/store";
-import { useCart } from "../CartContext";
 
 function getProductImage(product) {
   if (!product) return null;

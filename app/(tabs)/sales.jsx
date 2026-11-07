@@ -1,88 +1,136 @@
-import { useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { AppCard } from "../../components/AppCard.jsx";
-import ScreenHeader from "../../components/ScreenHeader.jsx";
-import { colors } from "../../constants/theme";
-import { getSales, money } from "../../lib/store";
+import { getOrders, getSales, money } from "../../lib/store";
 
 export default function SalesScreen() {
+  const router = useRouter();
   const [sales, setSales] = useState([]);
+  const [orders, setOrders] = useState([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      getSales()
-        .then(setSales)
-        .catch(() => setSales([]));
-    }, [])
+  const load = useCallback(async () => {
+    const [salesData, orderData] = await Promise.all([
+      getSales(),
+      getOrders(),
+    ]);
+    setSales(salesData || []);
+    setOrders(orderData || []);
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    load();
+  }, [load]));
+
+  const revenue = orders.length
+    ? orders
+        .filter((o) => String(o.status || "").toLowerCase() !== "cancelled")
+        .reduce((sum, o) => sum + Number(o.total || 0), 0)
+    : sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+
+  const completedOrders = orders.filter(
+    (o) => String(o.status || "").toLowerCase() !== "cancelled"
   );
 
-  const total = sales.reduce(
-    (sum, sale) => sum + Number(sale.total || 0),
-    0
-  );
+  const viewSale = (sale) => {
+    Alert.alert(
+      "Transaction Details",
+      `Product: ${sale.productName || "Product"}\nQuantity: ${sale.quantity || 1}\nAmount: ${money(sale.total)}\nDate: ${
+        sale.date ? new Date(sale.date).toLocaleString() : "Unavailable"
+      }`
+    );
+  };
 
   return (
     <SafeAreaView style={styles.page}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ScreenHeader
-          title="Sales"
-          subtitle="Your recorded store transactions"
-        />
-
-        {/* SUMMARY */}
-        <View style={styles.row}>
-          <AppCard style={styles.stat}>
-            <Text style={styles.label}>TOTAL REVENUE</Text>
-            <Text style={styles.value}>{money(total)}</Text>
-          </AppCard>
-
-          <AppCard style={styles.stat}>
-            <Text style={styles.label}>ORDERS</Text>
-            <Text style={styles.value}>{sales.length}</Text>
-          </AppCard>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Sales</Text>
+            <Text style={styles.subtitle}>Store revenue and transactions</Text>
+          </View>
+          <Pressable onPress={load}>
+            <Ionicons name="refresh" size={22} color="#111" />
+          </Pressable>
         </View>
 
-        {/* TRANSACTIONS */}
-        <Text style={styles.section}>RECENT TRANSACTIONS</Text>
+        <View style={styles.metric}>
+          <View style={styles.metricTop}>
+            <Ionicons name="wallet-outline" size={22} color="#111" />
+            <Text style={styles.metricLabel}>TOTAL REVENUE</Text>
+          </View>
+          <Text style={styles.metricValue}>{money(revenue)}</Text>
+          <Text style={styles.metricNote}>All non-cancelled orders</Text>
+        </View>
 
-        {sales.map((sale) => (
-          <AppCard key={sale.id} style={styles.card}>
-            <View style={styles.info}>
-              <Text style={styles.name}>
-                {sale.productName || "Product"}
+        <View style={styles.metricsRow}>
+          <View style={styles.smallMetric}>
+            <Ionicons name="receipt-outline" size={21} color="#111" />
+            <Text style={styles.smallLabel}>Total Orders</Text>
+            <Text style={styles.smallValue}>{completedOrders.length}</Text>
+          </View>
+          <View style={styles.smallMetric}>
+            <Ionicons name="cart-outline" size={21} color="#111" />
+            <Text style={styles.smallLabel}>Transactions</Text>
+            <Text style={styles.smallValue}>{sales.length}</Text>
+          </View>
+        </View>
+
+        <Pressable
+          style={styles.reportButton}
+          onPress={() => router.push("/sales-reports")}
+        >
+          <Ionicons name="bar-chart-outline" size={20} color="#111" />
+          <Text style={styles.reportText}>View Sales Reports</Text>
+          <Ionicons name="chevron-forward" size={18} color="#111" />
+        </Pressable>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <Text style={styles.muted}>{sales.length} total</Text>
+        </View>
+
+        {[...sales].reverse().map((sale, index) => (
+          <Pressable
+            key={sale.id || index}
+            style={styles.transaction}
+            onPress={() => viewSale(sale)}
+          >
+            <View style={styles.transactionIcon}>
+              <Ionicons name="receipt-outline" size={19} color="#111" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.productName}>
+                {sale.productName || "Product Sale"}
               </Text>
-
               <Text style={styles.date}>
                 {sale.date
-                  ? new Date(sale.date).toLocaleString()
-                  : "No date"}
+                  ? new Date(sale.date).toLocaleDateString("en-PH")
+                  : "Date unavailable"}
               </Text>
-
-              <Text style={styles.qty}>
+              <Text style={styles.quantity}>
                 Quantity: {sale.quantity || 1}
               </Text>
             </View>
-
-            <Text style={styles.amount}>
-              {money(sale.total || 0)}
-            </Text>
-          </AppCard>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.amount}>{money(sale.total)}</Text>
+              <Ionicons name="chevron-forward" size={17} color="#999" />
+            </View>
+          </Pressable>
         ))}
 
-        {/* EMPTY SALES */}
-        {!sales.length && (
-          <AppCard>
-            <Text style={styles.empty}>
-              No sales recorded yet.
-            </Text>
-
-            <Text style={styles.hint}>
-              Completed purchases will appear here.
-            </Text>
-          </AppCard>
+        {sales.length === 0 && (
+          <Text style={styles.empty}>
+            No transactions recorded yet.
+          </Text>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -90,93 +138,88 @@ export default function SalesScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  content: {
-    padding: 16,
-    paddingBottom: 30,
-  },
-
-  row: {
+  page: { flex: 1, backgroundColor: "#f6f6f6" },
+  content: { padding: 17, paddingBottom: 35 },
+  header: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
-
-  stat: {
-    flex: 1,
+  title: { fontSize: 25, fontWeight: "900", color: "#111" },
+  subtitle: { fontSize: 12, color: "#888", marginTop: 3 },
+  metric: {
+    backgroundColor: "#fff",
+    padding: 18,
+    borderRadius: 14,
+    marginBottom: 12,
   },
-
-  label: {
-    fontSize: 9,
+  metricTop: { flexDirection: "row", alignItems: "center", gap: 9 },
+  metricLabel: { color: "#777", fontSize: 10, fontWeight: "900" },
+  metricValue: {
+    color: "#111",
+    fontSize: 27,
     fontWeight: "900",
-    letterSpacing: 1,
-    color: "#64748B",
+    marginTop: 12,
   },
-
-  value: {
+  metricNote: { color: "#999", fontSize: 10, marginTop: 4 },
+  metricsRow: { flexDirection: "row", gap: 10, marginBottom: 13 },
+  smallMetric: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 13,
+    padding: 15,
+  },
+  smallLabel: { fontSize: 11, color: "#777", marginTop: 8 },
+  smallValue: {
     fontSize: 22,
     fontWeight: "900",
-    color: "#0F172A",
-    marginTop: 8,
+    color: "#111",
+    marginTop: 4,
   },
-
-  section: {
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.4,
-    color: "#F59E0B",
-    marginBottom: 11,
-  },
-
-  card: {
+  reportButton: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 15,
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+    marginBottom: 22,
+  },
+  reportText: { flex: 1, fontSize: 13, fontWeight: "900", color: "#111" },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: "900", color: "#111" },
+  muted: { fontSize: 10, color: "#888" },
+  transaction: {
+    backgroundColor: "#fff",
+    padding: 13,
+    borderRadius: 12,
     marginBottom: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
   },
-
-  info: {
-    flex: 1,
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f1f1f1",
+    alignItems: "center",
+    justifyContent: "center",
   },
-
-  name: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-
-  date: {
-    fontSize: 10,
-    color: "#64748B",
-    marginTop: 4,
-  },
-
-  qty: {
-    fontSize: 10,
-    color: "#64748B",
-    marginTop: 4,
-  },
-
-  amount: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#16A34A",
-  },
-
+  productName: { color: "#111", fontSize: 12, fontWeight: "900" },
+  date: { color: "#888", fontSize: 10, marginTop: 4 },
+  quantity: { color: "#888", fontSize: 10, marginTop: 2 },
+  amount: { color: "#111", fontSize: 12, fontWeight: "900" },
   empty: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0F172A",
+    backgroundColor: "#fff",
+    padding: 22,
+    borderRadius: 12,
     textAlign: "center",
-  },
-
-  hint: {
-    fontSize: 12,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 6,
+    color: "#888",
   },
 });
