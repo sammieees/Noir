@@ -22,7 +22,7 @@ function getProductImage(product) {
 
   const image = product.image;
 
-  if (image && typeof image === "number") return image;
+  if (typeof image === "number") return image;
 
   if (
     typeof image === "string" &&
@@ -94,8 +94,8 @@ export default function ProductDetailsRoute() {
             .filter(Boolean)
         : ["S", "M", "L", "XL", "XXL"];
 
-  const imageSource = getProductImage(product);
   const stock = Number(product?.stock || 0);
+  const imageSource = getProductImage(product);
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -112,7 +112,17 @@ export default function ProductDetailsRoute() {
 
     Alert.alert(
       "Added to Cart",
-      `${product.name} (${selectedSize}) has been added to your cart.`
+      `${product.name} (${selectedSize}) has been added to your cart.`,
+      [
+        {
+          text: "Continue Shopping",
+          style: "cancel",
+        },
+        {
+          text: "View Cart",
+          onPress: () => router.push("/(tabs)/cart"),
+        },
+      ]
     );
   };
 
@@ -129,16 +139,18 @@ export default function ProductDetailsRoute() {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <Ionicons name="bag-outline" size={55} color="#999999" />
+
         <Text style={styles.notFoundTitle}>Product Not Found</Text>
+
         <Text style={styles.notFoundText}>
           This product is no longer available.
         </Text>
 
         <Pressable
-          style={styles.backButton}
+          style={styles.primaryButton}
           onPress={() => router.replace("/(tabs)/products")}
         >
-          <Text style={styles.backButtonText}>BACK TO SHOP</Text>
+          <Text style={styles.primaryButtonText}>BACK TO SHOP</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -146,14 +158,17 @@ export default function ProductDetailsRoute() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* HEADER */}
         <View style={styles.header}>
           <Pressable
             style={styles.iconButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={22} color="#111111" />
+            <Ionicons name="arrow-back" size={21} color="#111111" />
           </Pressable>
 
           <View style={styles.brandContainer}>
@@ -165,7 +180,7 @@ export default function ProductDetailsRoute() {
             style={styles.iconButton}
             onPress={() => router.push("/(tabs)/cart")}
           >
-            <Ionicons name="bag-outline" size={23} color="#111111" />
+            <Ionicons name="bag-outline" size={22} color="#111111" />
           </Pressable>
         </View>
 
@@ -179,7 +194,7 @@ export default function ProductDetailsRoute() {
             />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="image-outline" size={55} color="#999999" />
+              <Ionicons name="image-outline" size={48} color="#999999" />
               <Text style={styles.placeholderText}>
                 NO IMAGE AVAILABLE
               </Text>
@@ -210,9 +225,10 @@ export default function ProductDetailsRoute() {
                   stock > 0 ? styles.inStockDot : styles.outStockDot,
                 ]}
               />
+
               <Text
                 style={[
-                  styles.stockBadgeText,
+                  styles.stockText,
                   stock > 0 ? styles.inStockText : styles.outStockText,
                 ]}
               >
@@ -228,13 +244,14 @@ export default function ProductDetailsRoute() {
           <View style={styles.divider} />
 
           {/* DESCRIPTION */}
-          <Text style={styles.sectionLabel}>PRODUCT DETAILS</Text>
+          <Text style={styles.sectionTitle}>PRODUCT DETAILS</Text>
 
           <Text style={styles.description}>
             {product.description ||
               "Designed for everyday confidence. A stylish addition to your wardrobe, made for a clean and timeless look."}
           </Text>
 
+          {/* PRODUCT INFORMATION */}
           {product.color ? (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>COLOR</Text>
@@ -256,7 +273,7 @@ export default function ProductDetailsRoute() {
 
           {/* SIZE SELECTION */}
           <View style={styles.sizeHeader}>
-            <Text style={styles.sectionLabel}>SELECT YOUR SIZE</Text>
+            <Text style={styles.sectionTitle}>SELECT YOUR SIZE</Text>
             <Text style={styles.sizeGuide}>SIZE</Text>
           </View>
 
@@ -297,19 +314,24 @@ export default function ProductDetailsRoute() {
             onPress={handleAddToCart}
             disabled={stock <= 0}
           >
+            <Ionicons name="bag-outline" size={19} color="#ffffff" />
+
             <Text style={styles.addToCartText}>
               {stock <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
             </Text>
+
             {stock > 0 && (
               <Ionicons name="arrow-forward" size={19} color="#ffffff" />
             )}
           </Pressable>
 
           <Pressable
-            style={styles.backButton}
+            style={styles.continueButton}
             onPress={() => router.replace("/(tabs)/products")}
           >
-            <Text style={styles.backButtonText}>CONTINUE SHOPPING</Text>
+            <Text style={styles.continueButtonText}>
+              CONTINUE SHOPPING
+            </Text>
           </Pressable>
 
           {/* FOOTER */}
@@ -329,6 +351,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f7f7f5",
+  },
+
+  scrollContent: {
+    paddingBottom: 20,
   },
 
   loadingContainer: {
@@ -357,11 +383,12 @@ const styles = StyleSheet.create({
   notFoundText: {
     marginTop: 8,
     color: "#777777",
+    fontSize: 13,
   },
 
   header: {
-    height: 75,
-    paddingHorizontal: 20,
+    height: 65,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -371,9 +398,9 @@ const styles = StyleSheet.create({
   },
 
   iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 22,
     backgroundColor: "#f5f5f3",
     justifyContent: "center",
     alignItems: "center",
@@ -384,7 +411,7 @@ const styles = StyleSheet.create({
   },
 
   brand: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: "900",
     letterSpacing: 7,
     color: "#111111",
@@ -394,14 +421,14 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 2,
     color: "#888888",
-    marginTop: 3,
+    marginTop: 2,
   },
 
   imageWrapper: {
-    margin: 15,
-    marginBottom: 0,
-    height: 390,
-    borderRadius: 12,
+    marginHorizontal: 15,
+    marginTop: 15,
+    height: 320,
+    borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#e9e9e7",
     position: "relative",
@@ -416,7 +443,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#e9e9e7",
   },
 
   placeholderText: {
@@ -429,11 +455,11 @@ const styles = StyleSheet.create({
 
   imageLabel: {
     position: "absolute",
-    bottom: 15,
-    left: 15,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    paddingHorizontal: 13,
-    paddingVertical: 9,
+    bottom: 13,
+    left: 13,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 4,
   },
 
@@ -446,10 +472,10 @@ const styles = StyleSheet.create({
 
   detailsContainer: {
     backgroundColor: "#ffffff",
-    margin: 15,
-    marginTop: 15,
-    padding: 22,
-    borderRadius: 12,
+    marginHorizontal: 15,
+    marginTop: 14,
+    padding: 19,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#eeeeee",
   },
@@ -458,7 +484,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 13,
+    marginBottom: 12,
   },
 
   category: {
@@ -472,7 +498,7 @@ const styles = StyleSheet.create({
   stockBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 7,
     borderRadius: 4,
   },
@@ -500,7 +526,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#c44242",
   },
 
-  stockBadgeText: {
+  stockText: {
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1,
@@ -515,27 +541,26 @@ const styles = StyleSheet.create({
   },
 
   productName: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "900",
     color: "#111111",
-    letterSpacing: 0.3,
-    lineHeight: 35,
+    lineHeight: 32,
   },
 
   price: {
-    fontSize: 23,
+    fontSize: 22,
     fontWeight: "800",
     color: "#111111",
-    marginTop: 9,
+    marginTop: 7,
   },
 
   divider: {
     height: 1,
     backgroundColor: "#eeeeee",
-    marginVertical: 23,
+    marginVertical: 19,
   },
 
-  sectionLabel: {
+  sectionTitle: {
     fontSize: 11,
     fontWeight: "900",
     color: "#111111",
@@ -543,25 +568,25 @@ const styles = StyleSheet.create({
   },
 
   description: {
-    fontSize: 14,
-    lineHeight: 24,
+    fontSize: 13,
+    lineHeight: 22,
     color: "#777777",
-    marginTop: 13,
-    marginBottom: 15,
+    marginTop: 11,
+    marginBottom: 12,
   },
 
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: 1,
     borderBottomColor: "#f1f1f1",
   },
 
   infoLabel: {
     color: "#999999",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1,
   },
@@ -588,13 +613,13 @@ const styles = StyleSheet.create({
   sizeContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 17,
+    gap: 9,
+    marginTop: 15,
   },
 
   sizeButton: {
-    width: 52,
-    height: 49,
+    width: 49,
+    height: 45,
     borderWidth: 1,
     borderColor: "#dddddd",
     borderRadius: 5,
@@ -609,7 +634,7 @@ const styles = StyleSheet.create({
   },
 
   sizeButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     color: "#333333",
   },
@@ -623,19 +648,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1,
-    marginTop: 15,
-    marginBottom: 20,
+    marginTop: 13,
+    marginBottom: 17,
   },
 
   addToCartButton: {
     backgroundColor: "#111111",
-    height: 56,
+    minHeight: 52,
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
+    gap: 11,
+    marginBottom: 10,
   },
 
   disabledButton: {
@@ -645,13 +670,13 @@ const styles = StyleSheet.create({
   addToCartText: {
     color: "#ffffff",
     fontWeight: "900",
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 2,
   },
 
-  backButton: {
+  continueButton: {
     backgroundColor: "#ffffff",
-    height: 52,
+    height: 48,
     borderRadius: 5,
     borderWidth: 1,
     borderColor: "#dddddd",
@@ -659,24 +684,39 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  backButtonText: {
+  continueButtonText: {
     color: "#222222",
     fontWeight: "800",
     fontSize: 10,
     letterSpacing: 2,
   },
 
+  primaryButton: {
+    backgroundColor: "#111111",
+    paddingHorizontal: 25,
+    paddingVertical: 16,
+    borderRadius: 5,
+    marginTop: 22,
+  },
+
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+
   footer: {
     alignItems: "center",
-    marginTop: 35,
-    paddingTop: 22,
+    marginTop: 28,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: "#eeeeee",
   },
 
   footerBrand: {
     color: "#111111",
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "900",
     letterSpacing: 7,
   },
@@ -685,7 +725,6 @@ const styles = StyleSheet.create({
     color: "#999999",
     fontSize: 9,
     letterSpacing: 3,
-    marginTop: 7,
-    marginBottom: 8,
+    marginTop: 6,
   },
 });

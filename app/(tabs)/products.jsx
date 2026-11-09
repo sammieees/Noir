@@ -146,7 +146,6 @@ export default function ProductsScreen() {
     if (Number(product.stock || 0) <= 0) return;
 
     const sizes = getSizes(product);
-    const defaultSize = sizes[0];
 
     const productForCart = {
       ...product,
@@ -154,7 +153,7 @@ export default function ProductsScreen() {
       image: getProductImage(product),
     };
 
-    addToCart(productForCart, defaultSize);
+    addToCart(productForCart, sizes[0]);
   };
 
   const openDetails = (product) => {
@@ -175,11 +174,7 @@ export default function ProductsScreen() {
         <View style={styles.imageContainer}>
           <Pressable
             onPress={() => openDetails(item)}
-            style={({ pressed }) => ({
-              flex: 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-              opacity: pressed ? 0.85 : 1,
-            })}
+            style={{ flex: 1 }}
           >
             {productImage ? (
               <Image
@@ -189,30 +184,30 @@ export default function ProductsScreen() {
               />
             ) : (
               <View style={styles.noImage}>
-                <Ionicons name="shirt-outline" size={38} color="#999" />
-                <Text style={styles.noImageText}>No Image</Text>
+                <Ionicons
+                  name="shirt-outline"
+                  size={38}
+                  color="#999"
+                />
+                <Text style={styles.noImageText}>
+                  No Image
+                </Text>
               </View>
             )}
           </Pressable>
 
           <View style={styles.saleBadge}>
-            <Text style={styles.saleText}>NEW</Text>
+            <Text style={styles.saleText}>NOIR</Text>
           </View>
 
           <Pressable
-            style={({ pressed }) => [
-              styles.favoriteButton,
-              {
-                transform: [{ scale: pressed ? 0.85 : 1 }],
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
+            style={styles.favoriteButton}
             onPress={() => toggleFavorite(item.id)}
           >
             <Ionicons
               name={isSaved ? "heart" : "heart-outline"}
               size={21}
-              color={isSaved ? "#e53945" : "#222222"}
+              color={isSaved ? "#e53945" : "#111"}
             />
           </Pressable>
         </View>
@@ -226,37 +221,38 @@ export default function ProductsScreen() {
             {item.name || "Unnamed Product"}
           </Text>
 
-          <Text style={styles.price}>{money(item.price)}</Text>
+          <Text style={styles.price}>
+            {money(item.price)}
+          </Text>
 
           <Text style={styles.sizes}>
             Sizes: {sizes.join("  ")}
           </Text>
 
-          <Text style={[styles.stock, stock <= 0 && styles.outOfStock]}>
-            {stock > 0 ? `${stock} available` : "Out of stock"}
+          <Text
+            style={[
+              styles.stock,
+              stock <= 0 && styles.outOfStock,
+            ]}
+          >
+            {stock > 0
+              ? `${stock} available`
+              : "Out of stock"}
           </Text>
 
           <Pressable
-            style={({ pressed }) => [
-              styles.detailsButton,
-              {
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
+            style={styles.detailsButton}
             onPress={() => openDetails(item)}
           >
-            <Text style={styles.detailsText}>View Details</Text>
+            <Text style={styles.detailsText}>
+              View Details
+            </Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [
+            style={[
               styles.cartButton,
               stock <= 0 && styles.disabledButton,
-              {
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-                opacity: pressed ? 0.8 : 1,
-              },
             ]}
             disabled={stock <= 0}
             onPress={() => handleAddToCart(item)}
@@ -285,50 +281,80 @@ export default function ProductsScreen() {
             <View style={styles.header}>
               <View>
                 <Text style={styles.brand}>NOIR</Text>
-                <Text style={styles.subtitle}>Find your style</Text>
+                <Text style={styles.subtitle}>
+                  MEN'S WEAR COLLECTION
+                </Text>
               </View>
 
               <Pressable
-                style={({ pressed }) => [
-                  styles.cartIconButton,
-                  {
-                    transform: [{ scale: pressed ? 0.9 : 1 }],
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
+                style={styles.cartIconButton}
                 onPress={() => router.push("/(tabs)/cart")}
               >
-                <Ionicons name="bag-outline" size={23} color="#111" />
+                <Ionicons
+                  name="bag-outline"
+                  size={23}
+                  color="#111"
+                />
 
                 {itemCount > 0 && (
                   <View style={styles.cartBadge}>
-                    <Text style={styles.cartBadgeText}>{itemCount}</Text>
+                    <Text style={styles.cartBadgeText}>
+                      {itemCount}
+                    </Text>
                   </View>
                 )}
               </Pressable>
             </View>
 
             <View style={styles.banner}>
-              <Text style={styles.bannerTitle}>LOOK GOOD.</Text>
-              <Text style={styles.bannerTitle}>FEEL GOOD.</Text>
+              <Text style={styles.bannerSmall}>
+                NOIR COLLECTION
+              </Text>
+
+              <Text style={styles.bannerTitle}>
+                ELEVATE YOUR
+              </Text>
+
+              <Text style={styles.bannerTitle}>
+                EVERYDAY STYLE.
+              </Text>
+
               <Text style={styles.bannerDescription}>
-                Simple styles made for everyday wear.
+                Timeless essentials. Effortless confidence.
               </Text>
             </View>
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Our Collection</Text>
+              <View>
+                <Text style={styles.sectionTitle}>
+                  Our Collection
+                </Text>
+
+                <Text style={styles.sectionSubtitle}>
+                  Discover your next favorite look.
+                </Text>
+              </View>
+
               <Text style={styles.productCount}>
-                {products.length} products
+                {products.length} ITEMS
               </Text>
             </View>
           </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No Products Yet</Text>
+            <Ionicons
+              name="shirt-outline"
+              size={45}
+              color="#aaa"
+            />
+
+            <Text style={styles.emptyTitle}>
+              No Products Yet
+            </Text>
+
             <Text style={styles.emptyText}>
-              Add a product from Inventory.
+              Products will appear here when available.
             </Text>
           </View>
         }
@@ -338,31 +364,40 @@ export default function ProductsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#eef2f7" },
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
 
   header: {
     backgroundColor: "#fff",
-    paddingHorizontal: 18,
-    paddingVertical: 15,
+    paddingHorizontal: 19,
+    paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
 
   brand: {
-    fontSize: 22,
+    fontSize: 27,
     fontWeight: "900",
     color: "#111",
-    letterSpacing: 3,
+    letterSpacing: 5,
   },
 
-  subtitle: { color: "#777", fontSize: 12, marginTop: 2 },
+  subtitle: {
+    color: "#888",
+    fontSize: 9,
+    letterSpacing: 2,
+    marginTop: 3,
+    fontWeight: "700",
+  },
 
   cartIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: "#eef2f7",
+    width: 45,
+    height: 45,
+    borderRadius: 14,
+    backgroundColor: "#f3f3f3",
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -370,138 +405,243 @@ const styles = StyleSheet.create({
 
   cartBadge: {
     position: "absolute",
-    right: -2,
+    right: -3,
     top: -3,
-    backgroundColor: "#222",
-    width: 21,
-    height: 21,
-    borderRadius: 11,
+    backgroundColor: "#111",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  cartBadgeText: { color: "#fff", fontSize: 11, fontWeight: "900" },
+  cartBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+  },
 
   banner: {
-    margin: 10,
-    backgroundColor: "#222",
-    borderRadius: 20,
-    padding: 20,
-    minHeight: 135,
+    margin: 15,
+    backgroundColor: "#111",
+    borderRadius: 17,
+    padding: 23,
+    minHeight: 175,
     justifyContent: "center",
+  },
+
+  bannerSmall: {
+    color: "#aaa",
+    fontSize: 9,
+    letterSpacing: 3,
+    fontWeight: "800",
+    marginBottom: 13,
   },
 
   bannerTitle: {
     color: "#fff",
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: "900",
     letterSpacing: 1,
   },
 
-  bannerDescription: { color: "#ccc", fontSize: 12, marginTop: 8 },
+  bannerDescription: {
+    color: "#bbb",
+    fontSize: 11,
+    marginTop: 12,
+  },
 
   sectionHeader: {
     paddingHorizontal: 17,
-    marginBottom: 8,
+    marginTop: 5,
+    marginBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
 
-  sectionTitle: { fontSize: 20, fontWeight: "900", color: "#222" },
-  productCount: { color: "#777", fontSize: 12 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#111",
+  },
 
-  list: { paddingHorizontal: 16, paddingBottom: 30 },
-  row: { justifyContent: "space-between" },
+  sectionSubtitle: {
+    fontSize: 10,
+    color: "#888",
+    marginTop: 4,
+  },
+
+  productCount: {
+    color: "#888",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+
+  list: {
+    paddingHorizontal: 13,
+    paddingBottom: 30,
+  },
+
+  row: {
+    justifyContent: "space-between",
+  },
 
   card: {
-    width: "48%",
+    width: "48.5%",
     backgroundColor: "#fff",
-    borderRadius: 18,
-    marginBottom: 14,
+    borderRadius: 15,
+    marginBottom: 13,
     overflow: "hidden",
   },
 
   imageContainer: {
     width: "100%",
     height: 190,
-    backgroundColor: "#f1f1f1",
+    backgroundColor: "#eee",
     position: "relative",
   },
 
-  productImage: { width: "100%", height: "100%" },
+  productImage: {
+    width: "100%",
+    height: "100%",
+  },
 
-  noImage: { flex: 1, alignItems: "center", justifyContent: "center" },
-  noImageText: { color: "#999", fontSize: 11, marginTop: 5 },
+  noImage: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  noImageText: {
+    color: "#999",
+    fontSize: 11,
+    marginTop: 5,
+  },
 
   saleBadge: {
     position: "absolute",
     top: 10,
     left: 10,
-    backgroundColor: "#222",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 7,
+    backgroundColor: "#111",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 5,
   },
 
-  saleText: { color: "#fff", fontSize: 9, fontWeight: "900" },
+  saleText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
 
   favoriteButton: {
     position: "absolute",
     top: 9,
     right: 9,
-    width: 36,
-    height: 36,
+    width: 35,
+    height: 35,
     borderRadius: 20,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     elevation: 3,
   },
 
-  info: { padding: 12 },
+  info: {
+    padding: 12,
+  },
+
   category: {
     fontSize: 9,
     fontWeight: "800",
-    color: "#888",
+    color: "#999",
     letterSpacing: 1,
   },
 
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "900",
-    color: "#222",
-    marginTop: 4,
+    color: "#111",
+    marginTop: 5,
+    minHeight: 36,
   },
 
-  price: { fontSize: 16, fontWeight: "900", color: "#111", marginTop: 6 },
-  sizes: { fontSize: 10, color: "#777", marginTop: 6 },
-  stock: { fontSize: 10, color: "#16A34A", fontWeight: "700", marginTop: 5 },
-  outOfStock: { color: "#DC2626" },
+  price: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#111",
+    marginTop: 6,
+  },
+
+  sizes: {
+    fontSize: 10,
+    color: "#888",
+    marginTop: 6,
+  },
+
+  stock: {
+    fontSize: 10,
+    color: "#333",
+    fontWeight: "700",
+    marginTop: 6,
+  },
+
+  outOfStock: {
+    color: "#c62828",
+  },
 
   detailsButton: {
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 9,
+    borderRadius: 8,
     paddingVertical: 9,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 12,
   },
 
-  detailsText: { fontSize: 12, fontWeight: "800", color: "#222" },
+  detailsText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#111",
+  },
 
   cartButton: {
-    backgroundColor: "#222",
-    borderRadius: 9,
+    backgroundColor: "#111",
+    borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
     marginTop: 7,
   },
 
-  disabledButton: { backgroundColor: "#9CA3AF" },
-  cartButtonText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  disabledButton: {
+    backgroundColor: "#999",
+  },
 
-  empty: { padding: 40, alignItems: "center" },
-  emptyTitle: { fontSize: 18, fontWeight: "900", color: "#222" },
-  emptyText: { fontSize: 12, color: "#777", marginTop: 6 },
+  cartButtonText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  empty: {
+    padding: 40,
+    alignItems: "center",
+  },
+
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#111",
+    marginTop: 12,
+  },
+
+  emptyText: {
+    fontSize: 11,
+    color: "#888",
+    marginTop: 6,
+    textAlign: "center",
+  },
 });

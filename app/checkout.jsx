@@ -1,8 +1,8 @@
 
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import {
   completeSale,
   getOrders,
@@ -25,6 +25,37 @@ import {
 } from "../lib/store";
 import { useCart } from "./CartContext";
 
+const PAYMENT_METHODS = [
+  {
+    id: "Cash on Delivery",
+    name: "Cash on Delivery",
+    description: "Pay when your order arrives.",
+    icon: "cash-outline",
+    label: "COD",
+  },
+  {
+    id: "GCash",
+    name: "GCash",
+    description: "Pay using your GCash account.",
+    icon: "phone-portrait-outline",
+    label: "E-WALLET",
+  },
+  {
+    id: "Maya",
+    name: "Maya",
+    description: "Pay using your Maya account.",
+    icon: "wallet-outline",
+    label: "E-WALLET",
+  },
+  {
+    id: "Bank Transfer",
+    name: "Bank Transfer",
+    description: "Pay through your preferred bank.",
+    icon: "business-outline",
+    label: "BANK",
+  },
+];
+
 export default function CheckoutScreen() {
   const router = useRouter();
   const { cart, total, clearCart } = useCart();
@@ -32,6 +63,7 @@ export default function CheckoutScreen() {
   const [customerName, setCustomerName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
   const [placingOrder, setPlacingOrder] = useState(false);
 
   const handlePlaceOrder = () => {
@@ -62,7 +94,7 @@ export default function CheckoutScreen() {
 
     Alert.alert(
       "Confirm Your Order",
-      `Total: ${money(total)}\nPayment: Cash on Delivery\n\nDo you want to place your order?`,
+      `Total: ${money(total)}\nPayment Method: ${paymentMethod}\n\nDo you want to place your order?`,
       [
         {
           text: "Cancel",
@@ -88,8 +120,7 @@ export default function CheckoutScreen() {
       const order = {
         id: `NOIR-${Date.now()}`,
 
-        customerId:
-          user.id || user.userId || user.email || null,
+        customerId: user.id || user.userId || user.email || null,
 
         customerEmail: String(user.email || "")
           .trim()
@@ -99,7 +130,11 @@ export default function CheckoutScreen() {
         contactNumber: contactNumber.trim(),
         deliveryAddress: deliveryAddress.trim(),
 
-        paymentMethod: "Cash on Delivery",
+        paymentMethod: paymentMethod,
+        paymentStatus:
+          paymentMethod === "Cash on Delivery"
+            ? "Pay on Delivery"
+            : "Pending",
 
         items: cart.map((item) => ({
           id: item.id,
@@ -121,16 +156,17 @@ export default function CheckoutScreen() {
       // SAVE CUSTOMER ORDER
       const existingOrders = await getOrders();
 
-      await saveOrders([
-        order,
-        ...existingOrders,
-      ]);
+      await saveOrders([order, ...existingOrders]);
 
       clearCart();
 
       Alert.alert(
         "Order Placed Successfully!",
-        `Thank you for shopping at NOIR!\n\nOrder ID: ${order.id}\nTotal: ${money(total)}\nPayment: Cash on Delivery`,
+        `Thank you for shopping at NOIR!\n\nOrder ID: ${order.id}\nTotal: ${money(total)}\nPayment: ${paymentMethod}${
+          paymentMethod === "Cash on Delivery"
+            ? "\nPay when your order arrives."
+            : "\nPayment is pending. Please follow the store's payment instructions."
+        }`,
         [
           {
             text: "View My Orders",
@@ -157,6 +193,8 @@ export default function CheckoutScreen() {
   if (cart.length === 0) {
     return (
       <SafeAreaView style={styles.emptyContainer}>
+        <Ionicons name="bag-outline" size={55} color="#999999" />
+
         <Text style={styles.emptyTitle}>YOUR CART IS EMPTY</Text>
 
         <Text style={styles.emptyText}>
@@ -183,6 +221,7 @@ export default function CheckoutScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* HEADER */}
           <View style={styles.header}>
             <Pressable onPress={() => router.back()}>
               <Text style={styles.backText}>‹ Back</Text>
@@ -197,6 +236,7 @@ export default function CheckoutScreen() {
             Complete your details to place your order.
           </Text>
 
+          {/* CUSTOMER INFORMATION */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Customer Information</Text>
 
@@ -238,6 +278,7 @@ export default function CheckoutScreen() {
             />
           </View>
 
+          {/* ORDER SUMMARY */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Order Summary</Text>
 
@@ -262,32 +303,89 @@ export default function CheckoutScreen() {
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
 
-              <Text style={styles.totalAmount}>
-                {money(total)}
+              <Text style={styles.totalAmount}>{money(total)}</Text>
+            </View>
+          </View>
+
+          {/* PAYMENT METHODS */}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+
+            <Text style={styles.paymentSubtitle}>
+              Choose how you want to pay for your order.
+            </Text>
+
+            {PAYMENT_METHODS.map((method) => {
+              const isSelected = paymentMethod === method.id;
+
+              return (
+                <Pressable
+                  key={method.id}
+                  style={[
+                    styles.paymentOption,
+                    isSelected && styles.selectedPaymentOption,
+                  ]}
+                  onPress={() => setPaymentMethod(method.id)}
+                  disabled={placingOrder}
+                >
+                  <View
+                    style={[
+                      styles.paymentIcon,
+                      isSelected && styles.selectedPaymentIcon,
+                    ]}
+                  >
+                    <Ionicons
+                      name={method.icon}
+                      size={23}
+                      color={isSelected ? "#ffffff" : "#333333"}
+                    />
+                  </View>
+
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.paymentTitle}>
+                      {method.name}
+                    </Text>
+
+                    <Text style={styles.paymentDescription}>
+                      {method.description}
+                    </Text>
+                  </View>
+
+                  <View style={styles.paymentRight}>
+                    <Text style={styles.paymentLabel}>
+                      {method.label}
+                    </Text>
+
+                    <View
+                      style={[
+                        styles.radioOuter,
+                        isSelected && styles.radioSelected,
+                      ]}
+                    >
+                      {isSelected && <View style={styles.radioInner} />}
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            {/* SELECTED PAYMENT INFORMATION */}
+            <View style={styles.paymentNotice}>
+              <Ionicons
+                name="information-circle-outline"
+                size={19}
+                color="#555555"
+              />
+
+              <Text style={styles.paymentNoticeText}>
+                {paymentMethod === "Cash on Delivery"
+                  ? "You will pay the total amount when your order arrives."
+                  : `You selected ${paymentMethod}. Payment is currently pending. Follow the store's payment instructions to complete your payment.`}
               </Text>
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-
-            <View style={styles.paymentOption}>
-              <View style={styles.radioOuter}>
-                <View style={styles.radioInner} />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.paymentTitle}>Cash on Delivery</Text>
-
-                <Text style={styles.paymentDescription}>
-                  Pay when your order arrives.
-                </Text>
-              </View>
-
-              <Text style={styles.codLabel}>COD</Text>
-            </View>
-          </View>
-
+          {/* ORDER NOTICE */}
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
               Please check your name, contact number, address, and order
@@ -295,6 +393,7 @@ export default function CheckoutScreen() {
             </Text>
           </View>
 
+          {/* PLACE ORDER */}
           <Pressable
             style={[
               styles.placeOrderButton,
@@ -328,7 +427,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#eef2f7",
+    backgroundColor: "#f7f7f5",
   },
 
   scrollContent: {
@@ -372,9 +471,11 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 15,
+    borderRadius: 12,
     padding: 18,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#eeeeee",
   },
 
   sectionTitle: {
@@ -394,7 +495,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: "#dddddd",
-    borderRadius: 9,
+    borderRadius: 8,
     paddingHorizontal: 13,
     paddingVertical: 13,
     fontSize: 14,
@@ -461,24 +562,83 @@ const styles = StyleSheet.create({
     color: "#111111",
   },
 
+  paymentSubtitle: {
+    color: "#888888",
+    fontSize: 12,
+    marginTop: -9,
+    marginBottom: 15,
+  },
+
   paymentOption: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#111111",
+    borderColor: "#e5e5e5",
     borderRadius: 10,
-    padding: 14,
-    gap: 12,
+    padding: 12,
+    marginBottom: 10,
+    gap: 11,
+    backgroundColor: "#ffffff",
+  },
+
+  selectedPaymentOption: {
+    borderColor: "#111111",
+    backgroundColor: "#fafafa",
+  },
+
+  paymentIcon: {
+    width: 43,
+    height: 43,
+    borderRadius: 9,
+    backgroundColor: "#eeeeee",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  selectedPaymentIcon: {
+    backgroundColor: "#111111",
+  },
+
+  paymentInfo: {
+    flex: 1,
+  },
+
+  paymentTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#111111",
+  },
+
+  paymentDescription: {
+    fontSize: 11,
+    color: "#777777",
+    marginTop: 4,
+  },
+
+  paymentRight: {
+    alignItems: "center",
+    gap: 7,
+  },
+
+  paymentLabel: {
+    fontSize: 8,
+    color: "#999999",
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 
   radioOuter: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#111111",
+    borderWidth: 1.5,
+    borderColor: "#bbbbbb",
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  radioSelected: {
+    borderColor: "#111111",
   },
 
   radioInner: {
@@ -488,27 +648,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#111111",
   },
 
-  paymentTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#111111",
+  paymentNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#f1f1ef",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 5,
   },
 
-  paymentDescription: {
-    fontSize: 12,
-    color: "#777777",
-    marginTop: 4,
-  },
-
-  codLabel: {
+  paymentNoticeText: {
+    flex: 1,
     fontSize: 11,
-    fontWeight: "900",
-    color: "#111111",
-    letterSpacing: 1,
+    lineHeight: 18,
+    color: "#555555",
   },
 
   notice: {
-    backgroundColor: "#e5e7eb",
+    backgroundColor: "#e9e9e7",
     borderRadius: 9,
     padding: 13,
     marginBottom: 17,
@@ -523,7 +681,7 @@ const styles = StyleSheet.create({
   placeOrderButton: {
     backgroundColor: "#111111",
     paddingVertical: 17,
-    borderRadius: 10,
+    borderRadius: 9,
     alignItems: "center",
   },
 
@@ -553,7 +711,7 @@ const styles = StyleSheet.create({
 
   emptyContainer: {
     flex: 1,
-    backgroundColor: "#eef2f7",
+    backgroundColor: "#f7f7f5",
     justifyContent: "center",
     alignItems: "center",
     padding: 25,
@@ -563,6 +721,7 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: "900",
     color: "#111111",
+    marginTop: 15,
   },
 
   emptyText: {

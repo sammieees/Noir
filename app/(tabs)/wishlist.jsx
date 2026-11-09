@@ -19,77 +19,53 @@ import {
   money,
   removeFromWishlist,
 } from "../../lib/store";
-import { useCart } from "../CartContext";
+
 export default function WishlistScreen() {
   const router = useRouter();
-  const { addToCart } = useCart();
 
-  const [favorites, setFavorites] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const getProductImage = (product) => {
-    const image = product?.image;
-
-    if (image === "polo") {
-      return require("../../assets/products/polo.jpg");
-    }
-
-    if (image === "jeans") {
-      return require("../../assets/products/jeans.jpg");
-    }
-
-    if (image === "jacket") {
-      return require("../../assets/products/jacket.jpg");
-    }
-
-    if (
-      typeof image === "string" &&
-      (
-        image.startsWith("http://") ||
-        image.startsWith("https://") ||
-        image.startsWith("file://") ||
-        image.startsWith("content://")
-      )
-    ) {
-      return { uri: image };
-    }
-
-    if (product?.imageUri) {
-      return { uri: product.imageUri };
-    }
-
-    const name = String(product?.name || "").toLowerCase();
-
-    if (name.includes("polo") || name.includes("oxford")) {
-      return require("../../assets/products/polo.jpg");
-    }
-
-    if (name.includes("jeans") || name.includes("denim")) {
-      return require("../../assets/products/jeans.jpg");
-    }
-
-    if (name.includes("jacket")) {
-      return require("../../assets/products/jacket.jpg");
-    }
-
-    return null;
-  };
-
-  const loadFavorites = useCallback(async () => {
+  const loadWishlist = useCallback(async () => {
     try {
       setLoading(true);
 
-      const products = await getProducts();
-      const savedIds = await getWishlist();
+      const [allProducts, savedItems] = await Promise.all([
+        getProducts(),
+        getWishlist(),
+      ]);
 
-      const favoriteProducts = products.filter((product) =>
-        savedIds.some((id) => String(id) === String(product.id))
-      );
+      const productList = Array.isArray(allProducts)
+        ? allProducts
+        : [];
 
-      setFavorites(favoriteProducts);
+      const wishlist = Array.isArray(savedItems)
+        ? savedItems
+        : [];
+
+      const savedProducts = wishlist
+        .map((item) => {
+          if (typeof item === "object" && item !== null) {
+            const itemId = String(item.id ?? item._id);
+            return (
+              productList.find(
+                (product) =>
+                  String(product.id ?? product._id) === itemId
+              ) || item
+            );
+          }
+
+          return productList.find(
+            (product) =>
+              String(product.id ?? product._id) === String(item)
+          );
+        })
+        .filter(Boolean);
+
+      setProducts(savedProducts);
     } catch (error) {
-      console.log("LOAD WISHLIST ERROR:", error);
-      setFavorites([]);
+      console.log("Wishlist loading error:", error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -97,110 +73,142 @@ export default function WishlistScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadFavorites();
-    }, [loadFavorites])
+      loadWishlist();
+    }, [loadWishlist])
   );
 
-  const handleRemove = async (productId) => {
-    try {
-      await removeFromWishlist(productId);
+  const getProductId = (product) =>
+    product.id ?? product._id;
 
-      setFavorites((current) =>
-        current.filter(
-          (item) => String(item.id) !== String(productId)
+  const getProductImage = (product) => {
+    const image =
+      product.image ??
+      product.imageUrl ??
+      product.photo ??
+      product.thumbnail;
+
+    if (!image) return null;
+
+    if (typeof image === "number") {
+      return image;
+    }
+
+    if (typeof image === "object" && image.uri) {
+      return { uri: image.uri };
+    }
+
+    if (typeof image === "string") {
+      if (
+        image.startsWith("http://") ||
+        image.startsWith("https://")
+      ) {
+        return { uri: image };
+      }
+    }
+
+    return null;
+  };
+
+  const handleRemove = async (product) => {
+    try {
+      await removeFromWishlist(getProductId(product));
+
+      setProducts((previous) =>
+        previous.filter(
+          (item) =>
+            String(getProductId(item)) !==
+            String(getProductId(product))
         )
       );
     } catch (error) {
-      console.log("REMOVE FAVORITE ERROR:", error);
+      console.log("Remove wishlist error:", error);
     }
   };
 
-  const handleAddToCart = (product) => {
-    if (Number(product.stock || 0) <= 0) return;
-
-    const sizes =
-      Array.isArray(product.sizes) && product.sizes.length > 0
-        ? product.sizes
-        : product.size
-          ? String(product.size).split("/").map((size) => size.trim())
-          : ["S", "M", "L", "XL"];
-
-    const productForCart = {
-      ...product,
-      sizes,
-      image: getProductImage(product),
-    };
-
-    addToCart(productForCart, sizes[0]);
-  };
-
-  const openDetails = (product) => {
+  const openProduct = (product) => {
     router.push({
       pathname: "/details/[id]",
-      params: { id: String(product.id) },
+      params: {
+        id: String(getProductId(product)),
+      },
     });
   };
 
-  const renderFavorite = ({ item }) => {
-    const image = getProductImage(item);
-    const stock = Number(item.stock || 0);
+  const renderProduct = ({ item }) => {
+    const imageSource = getProductImage(item);
 
     return (
-      <View style={styles.card}>
-        <Pressable onPress={() => openDetails(item)}>
-          {image ? (
+      <View style={styles.productCard}>
+        <Pressable
+          style={styles.imageContainer}
+          onPress={() => openProduct(item)}
+        >
+          {imageSource ? (
             <Image
-              source={image}
+              source={imageSource}
               style={styles.productImage}
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.noImage}>
-              <Ionicons name="image-outline" size={38} color="#999" />
-              <Text style={styles.noImageText}>No Image</Text>
+            <View style={styles.imagePlaceholder}>
+              <Ionicons
+                name="shirt-outline"
+                size={42}
+                color="#999"
+              />
             </View>
           )}
+
+          <Pressable
+            style={styles.removeButton}
+            onPress={() => handleRemove(item)}
+          >
+            <Ionicons
+              name="heart"
+              size={19}
+              color="#111"
+            />
+          </Pressable>
         </Pressable>
 
-        <Pressable
-          style={styles.removeButton}
-          onPress={() => handleRemove(item.id)}
-        >
-          <Ionicons name="heart" size={21} color="#e53945" />
-        </Pressable>
-
-        <View style={styles.info}>
-          <Text style={styles.category}>
-            {(item.category || "MEN'S WEAR").toUpperCase()}
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={1}>
+            {item.name ?? item.title ?? "Product"}
           </Text>
 
-          <Text style={styles.name} numberOfLines={2}>
-            {item.name}
+          <Text style={styles.productCategory}>
+            {item.category ?? "MEN'S WEAR"}
           </Text>
 
-          <Text style={styles.price}>{money(item.price)}</Text>
-
-          <Text style={[styles.stock, stock <= 0 && styles.outOfStock]}>
-            {stock > 0 ? `${stock} available` : "Out of stock"}
+          <Text style={styles.productPrice}>
+            {money(item.price ?? 0)}
           </Text>
 
           <Pressable
-            style={styles.detailsButton}
-            onPress={() => openDetails(item)}
+            style={styles.viewButton}
+            onPress={() => openProduct(item)}
           >
-            <Text style={styles.detailsText}>VIEW DETAILS</Text>
+            <Text style={styles.viewButtonText}>
+              VIEW PRODUCT
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={15}
+              color="#fff"
+            />
           </Pressable>
 
           <Pressable
-            style={[
-              styles.cartButton,
-              stock <= 0 && styles.disabledButton,
-            ]}
-            disabled={stock <= 0}
-            onPress={() => handleAddToCart(item)}
+            style={styles.removeTextButton}
+            onPress={() => handleRemove(item)}
           >
-            <Text style={styles.cartButtonText}>
-              {stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+            <Ionicons
+              name="trash-outline"
+              size={15}
+              color="#777"
+            />
+            <Text style={styles.removeText}>
+              Remove from wishlist
             </Text>
           </Pressable>
         </View>
@@ -212,53 +220,83 @@ export default function WishlistScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.brand}>NOIR</Text>
-          <Text style={styles.subtitle}>YOUR PERSONAL COLLECTION</Text>
+          <Text style={styles.headerSubtitle}>
+            YOUR PERSONAL COLLECTION
+          </Text>
+          <Text style={styles.headerTitle}>Wishlist</Text>
         </View>
 
-        <Ionicons name="heart" size={27} color="#111111" />
+        <View style={styles.countContainer}>
+          <Ionicons
+            name="heart"
+            size={17}
+            color="#fff"
+          />
+          <Text style={styles.countText}>
+            {products.length}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>My Wishlist</Text>
-        <Text style={styles.count}>
-          {favorites.length} saved items
-        </Text>
-      </View>
+      <View style={styles.divider} />
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#111111" />
-          <Text style={styles.loadingText}>Loading favorites...</Text>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#111" />
+          <Text style={styles.loadingText}>
+            Loading your wishlist...
+          </Text>
         </View>
-      ) : favorites.length === 0 ? (
-        <View style={styles.empty}>
+      ) : products.length === 0 ? (
+        <View style={styles.emptyContainer}>
           <View style={styles.emptyIcon}>
-            <Ionicons name="heart-outline" size={45} color="#999999" />
+            <Ionicons
+              name="heart-outline"
+              size={42}
+              color="#111"
+            />
           </View>
 
-          <Text style={styles.emptyTitle}>Your Wishlist is Empty</Text>
+          <Text style={styles.emptyTitle}>
+            YOUR WISHLIST IS EMPTY
+          </Text>
 
-          <Text style={styles.emptyText}>
-            Save your favorite styles and find them here anytime.
+          <Text style={styles.emptyDescription}>
+            Save your favorite pieces here and come back
+            whenever you're ready.
           </Text>
 
           <Pressable
             style={styles.shopButton}
-            onPress={() => router.push("/(tabs)/products")}
+            onPress={() => router.push("/products")}
           >
-            <Text style={styles.shopButtonText}>EXPLORE COLLECTION</Text>
+            <Text style={styles.shopButtonText}>
+              EXPLORE PRODUCTS
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={16}
+              color="#fff"
+            />
           </Pressable>
         </View>
       ) : (
         <FlatList
-          data={favorites}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderFavorite}
+          data={products}
+          keyExtractor={(item, index) =>
+            String(getProductId(item) ?? index)
+          }
+          renderItem={renderProduct}
           numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.list}
+          columnWrapperStyle={styles.productRow}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={styles.sectionDescription}>
+              {products.length} SAVED{" "}
+              {products.length === 1 ? "ITEM" : "ITEMS"}
+            </Text>
+          }
         />
       )}
     </SafeAreaView>
@@ -268,231 +306,229 @@ export default function WishlistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f7f7f5",
+    backgroundColor: "#F7F7F7",
   },
 
   header: {
-    backgroundColor: "#ffffff",
     paddingHorizontal: 20,
-    paddingVertical: 17,
+    paddingTop: 15,
+    paddingBottom: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eeeeee",
   },
 
-  brand: {
-    fontSize: 23,
-    fontWeight: "900",
-    color: "#111111",
-    letterSpacing: 5,
-  },
-
-  subtitle: {
+  headerSubtitle: {
     fontSize: 9,
-    color: "#999999",
-    letterSpacing: 2,
-    marginTop: 4,
+    letterSpacing: 2.5,
+    color: "#888",
+    fontWeight: "600",
+    marginBottom: 7,
   },
 
-  titleContainer: {
-    paddingHorizontal: 18,
-    paddingTop: 22,
-    paddingBottom: 15,
+  headerTitle: {
+    fontSize: 29,
+    fontWeight: "800",
+    color: "#111",
+    letterSpacing: -1,
+  },
+
+  countContainer: {
+    backgroundColor: "#111",
+    borderRadius: 25,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 7,
   },
 
-  title: {
-    fontSize: 23,
-    fontWeight: "900",
-    color: "#111111",
+  countText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
   },
 
-  count: {
-    color: "#888888",
-    fontSize: 11,
+  divider: {
+    height: 1,
+    backgroundColor: "#E8E8E8",
+    marginHorizontal: 20,
   },
 
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 30,
+  listContent: {
+    paddingHorizontal: 15,
+    paddingTop: 18,
+    paddingBottom: 35,
   },
 
-  row: {
+  sectionDescription: {
+    fontSize: 10,
+    color: "#888",
+    letterSpacing: 1.5,
+    fontWeight: "700",
+    marginBottom: 15,
+    marginLeft: 3,
+  },
+
+  productRow: {
     justifyContent: "space-between",
   },
 
-  card: {
-    width: "48%",
-    backgroundColor: "#ffffff",
-    borderRadius: 15,
+  productCard: {
+    width: "48.5%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
     marginBottom: 15,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#EEEEEE",
+  },
+
+  imageContainer: {
+    height: 175,
+    backgroundColor: "#EEEEEE",
     position: "relative",
   },
 
   productImage: {
     width: "100%",
-    height: 190,
-    backgroundColor: "#eeeeee",
+    height: "100%",
   },
 
-  noImage: {
-    width: "100%",
-    height: 190,
+  imagePlaceholder: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#eeeeee",
-  },
-
-  noImageText: {
-    color: "#999999",
-    fontSize: 11,
-    marginTop: 5,
+    backgroundColor: "#EAEAEA",
   },
 
   removeButton: {
     position: "absolute",
     top: 10,
     right: 10,
-    width: 37,
-    height: 37,
+    width: 34,
+    height: 34,
     borderRadius: 20,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  productInfo: {
+    padding: 11,
+  },
+
+  productName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#111",
+  },
+
+  productCategory: {
+    fontSize: 9,
+    color: "#999",
+    letterSpacing: 1,
+    marginTop: 5,
+  },
+
+  productPrice: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#111",
+    marginTop: 8,
+    marginBottom: 11,
+  },
+
+  viewButton: {
+    backgroundColor: "#111",
+    borderRadius: 6,
+    paddingVertical: 10,
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    elevation: 3,
+    gap: 7,
   },
 
-  info: {
-    padding: 12,
-  },
-
-  category: {
-    color: "#999999",
+  viewButtonText: {
+    color: "#fff",
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1,
   },
 
-  name: {
-    color: "#111111",
-    fontSize: 15,
-    fontWeight: "900",
-    marginTop: 5,
-  },
-
-  price: {
-    color: "#111111",
-    fontSize: 16,
-    fontWeight: "900",
-    marginTop: 7,
-  },
-
-  stock: {
-    color: "#39834b",
-    fontSize: 10,
-    fontWeight: "700",
-    marginTop: 5,
-  },
-
-  outOfStock: {
-    color: "#d32f2f",
-  },
-
-  detailsButton: {
-    borderWidth: 1,
-    borderColor: "#dddddd",
-    paddingVertical: 10,
-    borderRadius: 6,
-    alignItems: "center",
-    marginTop: 12,
-  },
-
-  detailsText: {
-    color: "#222222",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-
-  cartButton: {
-    backgroundColor: "#111111",
-    paddingVertical: 11,
-    borderRadius: 6,
-    alignItems: "center",
-    marginTop: 8,
-  },
-
-  disabledButton: {
-    backgroundColor: "#999999",
-  },
-
-  cartButtonText: {
-    color: "#ffffff",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-
-  loading: {
-    flex: 1,
+  removeTextButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 5,
+    marginTop: 11,
+    paddingVertical: 3,
+  },
+
+  removeText: {
+    fontSize: 10,
+    color: "#777",
+  },
+
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   loadingText: {
-    marginTop: 12,
-    color: "#888888",
+    color: "#888",
     fontSize: 12,
+    marginTop: 12,
   },
 
-  empty: {
+  emptyContainer: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 35,
   },
 
   emptyIcon: {
-    width: 90,
-    height: 90,
+    width: 85,
+    height: 85,
     borderRadius: 50,
-    backgroundColor: "#eeeeec",
-    justifyContent: "center",
+    backgroundColor: "#EEEEEE",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "center",
+    marginBottom: 23,
   },
 
   emptyTitle: {
-    color: "#111111",
-    fontSize: 19,
-    fontWeight: "900",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: "#111",
   },
 
-  emptyText: {
-    color: "#888888",
-    fontSize: 13,
+  emptyDescription: {
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#888",
     textAlign: "center",
-    lineHeight: 21,
-    marginTop: 9,
+    marginTop: 10,
+    marginBottom: 25,
   },
 
   shopButton: {
-    backgroundColor: "#111111",
-    paddingHorizontal: 25,
-    paddingVertical: 15,
-    borderRadius: 6,
-    marginTop: 25,
+    backgroundColor: "#111",
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
 
   shopButtonText: {
-    color: "#ffffff",
+    color: "#fff",
     fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.5,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
 });
