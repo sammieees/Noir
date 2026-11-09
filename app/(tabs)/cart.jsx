@@ -173,7 +173,7 @@ export default function Cart() {
               style={styles.checkoutButton}
               onPress={handleCheckout}
             >
-            <Text style={styles.checkoutText}>BUY NOW</Text>
+            <Text style={styles.checkoutText}>Check Out</Text>
             </Pressable>
           </View>
         </>
