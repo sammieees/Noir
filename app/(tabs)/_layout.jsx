@@ -1,19 +1,14 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  View,
-} from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,13 +23,9 @@ export default function TabLayout() {
         return;
       }
 
-      const user = JSON.parse(savedUser);
-      const currentRole = user.role?.toLowerCase();
+      const currentRole = JSON.parse(savedUser).role?.toLowerCase();
 
-      if (
-        currentRole !== "admin" &&
-        currentRole !== "customer"
-      ) {
+      if (currentRole !== "admin" && currentRole !== "customer") {
         setRole(null);
         router.replace("/login");
         return;
@@ -56,15 +47,13 @@ export default function TabLayout() {
 
   if (loading || !role) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <ActivityIndicator size="large" color="#111111" />
+      <View style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#fff"
+      }}>
+        <ActivityIndicator size="large" color="#111" />
       </View>
     );
   }
@@ -73,49 +62,44 @@ export default function TabLayout() {
 
   const tabStyle = {
     headerShown: false,
-    tabBarActiveTintColor: "#111111",
-    tabBarInactiveTintColor: "#999999",
+    tabBarActiveTintColor: "#111",
+    tabBarInactiveTintColor: "#999",
     tabBarShowLabel: true,
-
     tabBarLabelStyle: {
       fontSize: 10,
-      fontWeight: "600",
-      marginBottom: 3,
-      letterSpacing: 0.4,
+      fontWeight: "700",
+      marginBottom: 3
     },
-
     tabBarStyle: {
       height: 62 + insets.bottom,
       paddingTop: 6,
       paddingBottom: Math.max(insets.bottom, 8),
-      backgroundColor: "#FFFFFF",
+      backgroundColor: "#fff",
       borderTopWidth: 1,
-      borderTopColor: "#EEEEEE",
-      elevation: 8,
-    },
+      borderTopColor: "#eee",
+      elevation: 8
+    }
   };
 
-  function renderIcon(iconName, focused, color) {
-    return (
-      <Ionicons
-        name={iconName}
-        size={23}
-        color={color || (focused ? "#111111" : "#999999")} />
-    );
-  }
+  const icon = (name, focused, color) => (
+    <Ionicons
+      name={focused ? name : `${name}-outline`}
+      size={22}
+      color={color}
+    />
+  );
 
   return (
     <Tabs screenOptions={tabStyle}>
 
-      {/* ADMIN TABS */}
-
+      {/* ADMIN NAVIGATION */}
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
           href: isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "grid" : "grid-outline", focused, color),
+            icon("grid", focused, color)
         }}
       />
 
@@ -125,17 +109,17 @@ export default function TabLayout() {
           title: "Products",
           href: isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "cube" : "cube-outline", focused, color),
+            icon("cube", focused, color)
         }}
       />
 
       <Tabs.Screen
-        name="sales"
+        name="admin-orders"
         options={{
-          title: "Sales",
+          title: "Orders",
           href: isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "bar-chart" : "bar-chart-outline", focused, color),
+            icon("receipt", focused, color)
         }}
       />
 
@@ -145,19 +129,18 @@ export default function TabLayout() {
           title: "Customers",
           href: isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "people" : "people-outline", focused, color),
+            icon("people", focused, color)
         }}
       />
 
-      {/* CUSTOMER TABS */}
-
+      {/* CUSTOMER NAVIGATION */}
       <Tabs.Screen
         name="products"
         options={{
           title: "Shop",
           href: !isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "shirt" : "shirt-outline", focused, color),
+            icon("shirt", focused, color)
         }}
       />
 
@@ -167,7 +150,7 @@ export default function TabLayout() {
           title: "Wishlist",
           href: !isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "heart" : "heart-outline", focused, color),
+            icon("heart", focused, color)
         }}
       />
 
@@ -177,7 +160,7 @@ export default function TabLayout() {
           title: "My Cart",
           href: !isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "bag-handle" : "bag-handle-outline", focused, color),
+            icon("bag-handle", focused, color)
         }}
       />
 
@@ -187,27 +170,24 @@ export default function TabLayout() {
           title: "My Orders",
           href: !isAdmin ? undefined : null,
           tabBarIcon: ({ focused, color }) =>
-            renderIcon(focused ? "receipt" : "receipt-outline", focused, color),
+            icon("receipt", focused, color)
         }}
       />
 
-      {/* ACCOUNT TAB */}
-
+      {/* SHARED ACCOUNT */}
       <Tabs.Screen
         name="accounts"
         options={{
           title: "Account",
           href: undefined,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person" size={25} color={color || "#999999"} />
-          ),
+          tabBarIcon: ({ focused, color }) =>
+            icon("person", focused, color)
         }}
       />
 
-      {/* HIDDEN SCREENS */}
-
+      {/* HIDDEN ROUTES */}
       <Tabs.Screen
-        name="admin-orders"
+        name="sales"
         options={{ href: null }}
       />
 
@@ -215,7 +195,13 @@ export default function TabLayout() {
         name="customer-details"
         options={{ href: null }}
       />
-
+    <Tabs.Screen
+  name="admin-order-details/[id]"
+  options={{
+    href: null,
+    headerShown: false,
+  }}
+  />
     </Tabs>
   );
 }

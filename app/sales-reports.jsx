@@ -2,28 +2,32 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getOrders, getSales, money } from "../lib/store";
+import { getOrders, money } from "../lib/store";
+
+const isValid = (o) =>
+  String(o.status || "Pending").toLowerCase() !== "cancelled";
+
+const isRecordedSale = (o) =>
+  ["paid", "completed"].includes(
+    String(o.paymentStatus || "").toLowerCase()
+  ) ||
+  String(o.status || "").toLowerCase() === "delivered";
 
 export default function SalesReports() {
   const router = useRouter();
+
   const [period, setPeriod] = useState("Monthly");
-  const [sales, setSales] = useState([]);
   const [orders, setOrders] = useState([]);
 
   const load = useCallback(async () => {
-    const [salesData, orderData] = await Promise.all([
-      getSales(),
-      getOrders(),
-    ]);
-    setSales(salesData || []);
-    setOrders(orderData || []);
+    setOrders(await getOrders());
   }, []);
 
   useFocusEffect(
@@ -42,237 +46,531 @@ export default function SalesReports() {
       start.setDate(now.getDate() - 6);
       start.setHours(0, 0, 0, 0);
     } else {
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1
+      );
     }
 
-    const selectedOrders = orders.filter((order) => {
-      const date = new Date(order.date);
+    const selected = orders.filter((o) => {
+      const d = new Date(o.date);
+
       return (
-        !Number.isNaN(date.getTime()) &&
-        date >= start &&
-        date <= now &&
-        String(order.status || "Pending").toLowerCase() !== "cancelled"
+        isValid(o) &&
+        !Number.isNaN(d.getTime()) &&
+        d >= start &&
+        d <= now
       );
     });
 
-    const selectedSales = sales.filter((sale) => {
-      const date = new Date(sale.date);
-      return (
-        !Number.isNaN(date.getTime()) &&
-        date >= start &&
-        date <= now
+    const revenue = selected
+      .filter(isRecordedSale)
+      .reduce(
+        (sum, o) => sum + Number(o.total || 0),
+        0
       );
-    });
 
-    const revenue = selectedOrders.length
-      ? selectedOrders.reduce(
-          (sum, order) => sum + Number(order.total || 0),
-          0
-        )
-      : selectedSales.reduce(
-          (sum, sale) => sum + Number(sale.total || 0),
-          0
+    const today = orders
+      .filter(
+        (o) =>
+          isValid(o) &&
+          isRecordedSale(o) &&
+          new Date(o.date).toDateString() ===
+            now.toDateString()
+      )
+      .reduce(
+        (sum, o) => sum + Number(o.total || 0),
+        0
+      );
+
+    const month = orders
+      .filter((o) => {
+        const d = new Date(o.date);
+
+        return (
+          isValid(o) &&
+          isRecordedSale(o) &&
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
         );
+      })
+      .reduce(
+        (sum, o) => sum + Number(o.total || 0),
+        0
+      );
+
+    const transactions = selected.filter(isRecordedSale);
+
+    const best = {};
+
+    transactions.forEach((o) =>
+      (o.items || []).forEach((item) => {
+        const key = item.name || "Product";
+
+        best[key] =
+          (best[key] || 0) +
+          Number(item.quantity || 1);
+      })
+    );
+
+    const history = [...transactions].sort(
+      (a, b) =>
+        new Date(b.date) - new Date(a.date)
+    );
+
+    const chart = history.slice(0, 7).reverse();
 
     return {
+      selected,
       revenue,
-      orders: selectedOrders.length,
-      sales: selectedSales,
+      today,
+      month,
+      transactions,
+      best: Object.entries(best)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5),
+      history,
+      chart
     };
-  }, [period, orders, sales]);
+  }, [period, orders]);
 
-  const maxValue = Math.max(
-    ...report.sales.map((item) => Number(item.total || 0)),
+  const max = Math.max(
+    ...report.chart.map((o) => Number(o.total || 0)),
     1
   );
 
   return (
     <SafeAreaView style={styles.page}>
       <ScrollView contentContainerStyle={styles.content}>
+
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={23} color="#111" />
+            <Ionicons
+              name="arrow-back"
+              size={23}
+              color="#111"
+            />
           </Pressable>
-          <Text style={styles.title}>Sales Reports</Text>
+
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={styles.title}>
+              Sales Reports
+            </Text>
+
+            <Text style={styles.subtitle}>
+              Recorded customer orders
+            </Text>
+          </View>
+
           <Pressable onPress={load}>
-            <Ionicons name="refresh" size={22} color="#111" />
+            <Ionicons
+              name="refresh"
+              size={21}
+              color="#111"
+            />
           </Pressable>
         </View>
 
         <View style={styles.periods}>
-          {["Daily", "Weekly", "Monthly"].map((item) => (
+          {["Daily", "Weekly", "Monthly"].map((x) => (
             <Pressable
-              key={item}
-              onPress={() => setPeriod(item)}
+              key={x}
+              onPress={() => setPeriod(x)}
               style={[
-                styles.periodButton,
-                period === item && styles.periodActive,
+                styles.period,
+                period === x && styles.active
               ]}
             >
-              <Text style={[
-                styles.periodText,
-                period === item && styles.periodTextActive,
-              ]}>
-                {item}
+              <Text
+                style={[
+                  styles.periodText,
+                  period === x && styles.activeText
+                ]}
+              >
+                {x}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={styles.revenueCard}>
-          <Text style={styles.label}>TOTAL REVENUE</Text>
-          <Text style={styles.revenue}>{money(report.revenue)}</Text>
-          <Text style={styles.caption}>{period} Report</Text>
+        <View style={styles.hero}>
+          <Text style={styles.label}>
+            {period.toUpperCase()} SALES
+          </Text>
+
+          <Text style={styles.revenue}>
+            {money(report.revenue)}
+          </Text>
+
+          <Text style={styles.caption}>
+            {report.transactions.length} paid/delivered transaction(s)
+          </Text>
         </View>
 
         <View style={styles.stats}>
-          <View style={styles.statCard}>
-            <Ionicons name="receipt-outline" size={21} color="#111" />
-            <Text style={styles.statLabel}>Total Orders</Text>
-            <Text style={styles.statValue}>{report.orders}</Text>
+          <View style={styles.stat}>
+            <Text style={styles.label}>
+              TODAY'S SALES
+            </Text>
+
+            <Text style={styles.statValue}>
+              {money(report.today)}
+            </Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={21} color="#111" />
-            <Text style={styles.statLabel}>Transactions</Text>
-            <Text style={styles.statValue}>{report.sales.length}</Text>
+          <View style={styles.stat}>
+            <Text style={styles.label}>
+              MONTHLY SALES
+            </Text>
+
+            <Text style={styles.statValue}>
+              {money(report.month)}
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.section}>Sales Summary</Text>
+        <Text style={styles.section}>
+          Sales Chart
+        </Text>
 
         <View style={styles.chartCard}>
-          {report.sales.length === 0 ? (
-            <Text style={styles.empty}>No sales data for this period.</Text>
+          {report.chart.length === 0 ? (
+            <Text style={styles.empty}>
+              No recorded sales in this period.
+            </Text>
           ) : (
             <View style={styles.chart}>
-              {report.sales.slice(-7).map((sale, index) => {
-                const amount = Number(sale.total || 0);
-                const height = Math.max((amount / maxValue) * 130, 8);
+              {report.chart.map((o, i) => (
+                <View
+                  key={String(o.id || i)}
+                  style={styles.barCol}
+                >
+                  <Text style={styles.barValue}>
+                    {Math.round(Number(o.total || 0))}
+                  </Text>
 
-                return (
-                  <View style={styles.barColumn} key={sale.id || index}>
-                    <Text style={styles.barAmount}>
-                      {Math.round(amount)}
-                    </Text>
-                    <View style={[styles.bar, { height }]} />
-                    <Text style={styles.barLabel}>
-                      {sale.date
-                        ? new Date(sale.date).toLocaleDateString("en-PH", {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        : "Sale"}
-                    </Text>
-                  </View>
-                );
-              })}
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: Math.max(
+                          Number(o.total || 0) / max * 115,
+                          7
+                        )
+                      }
+                    ]}
+                  />
+
+                  <Text style={styles.barLabel}>
+                    {new Date(o.date).toLocaleDateString(
+                      "en-PH",
+                      {
+                        day: "numeric",
+                        month: "short"
+                      }
+                    )}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
 
-        <Text style={styles.section}>Report Details</Text>
-        <View style={styles.detailsCard}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Report Period</Text>
-            <Text style={styles.detailValue}>{period}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Total Orders</Text>
-            <Text style={styles.detailValue}>{report.orders}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Total Revenue</Text>
-            <Text style={styles.detailValue}>{money(report.revenue)}</Text>
-          </View>
+        <Text style={styles.section}>
+          Best-Selling Products
+        </Text>
+
+        <View style={styles.card}>
+          {report.best.length === 0 ? (
+            <Text style={styles.empty}>
+              No product sales recorded.
+            </Text>
+          ) : (
+            report.best.map(([name, qty], i) => (
+              <View key={name} style={styles.row}>
+                <View style={styles.rank}>
+                  <Text style={styles.rankText}>
+                    {i + 1}
+                  </Text>
+                </View>
+
+                <Text style={styles.productName}>
+                  {name}
+                </Text>
+
+                <Text style={styles.qty}>
+                  {qty} sold
+                </Text>
+              </View>
+            ))
+          )}
         </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.section}>
+            Sales History
+          </Text>
+
+          <Text style={styles.muted}>
+            {report.history.length} order(s)
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          {report.history.length === 0 ? (
+            <Text style={styles.empty}>
+              No sales history for this period.
+            </Text>
+          ) : (
+            report.history.map((o, i) => (
+              <View
+                key={String(o.id || i)}
+                style={styles.historyRow}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.orderId}>
+                    #{o.id}
+                  </Text>
+
+                  <Text style={styles.date}>
+                    {o.date
+                      ? new Date(o.date).toLocaleString(
+                          "en-PH",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric"
+                          }
+                        )
+                      : "Date unavailable"}
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.amount}>
+                    {money(o.total)}
+                  </Text>
+
+                  <Text style={styles.status}>
+                    {o.status || "Pending"}
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#f6f6f6" },
-  content: { padding: 17, paddingBottom: 35 },
+  page: {
+    flex: 1,
+    backgroundColor: "#f5f5f5"
+  },
+  content: {
+    padding: 17,
+    paddingBottom: 35
+  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 22,
+    marginBottom: 20
   },
-  title: { fontSize: 20, fontWeight: "900", color: "#111" },
+  title: {
+    fontSize: 21,
+    fontWeight: "900",
+    color: "#111"
+  },
+  subtitle: {
+    fontSize: 11,
+    color: "#888",
+    marginTop: 3
+  },
   periods: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderRadius: 12,
     padding: 5,
-    marginBottom: 18,
+    borderRadius: 13,
+    marginBottom: 14
   },
-  periodButton: {
+  period: {
     flex: 1,
     padding: 10,
     alignItems: "center",
-    borderRadius: 9,
+    borderRadius: 9
   },
-  periodActive: { backgroundColor: "#111" },
-  periodText: { color: "#777", fontSize: 12, fontWeight: "800" },
-  periodTextActive: { color: "#fff" },
-  revenueCard: {
+  active: {
+    backgroundColor: "#111"
+  },
+  periodText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#777"
+  },
+  activeText: {
+    color: "#fff"
+  },
+  hero: {
     backgroundColor: "#111",
-    padding: 21,
-    borderRadius: 15,
-    marginBottom: 13,
+    borderRadius: 17,
+    padding: 19
   },
-  label: { color: "#ccc", fontSize: 10, fontWeight: "800" },
-  revenue: { color: "#fff", fontSize: 27, fontWeight: "900", marginTop: 9 },
-  caption: { color: "#aaa", fontSize: 11, marginTop: 5 },
-  stats: { flexDirection: "row", gap: 11, marginBottom: 22 },
-  statCard: {
+  label: {
+    fontSize: 10,
+    color: "#999",
+    letterSpacing: 1,
+    fontWeight: "800"
+  },
+  revenue: {
+    fontSize: 27,
+    fontWeight: "900",
+    color: "#fff",
+    marginTop: 8
+  },
+  caption: {
+    fontSize: 10,
+    color: "#aaa",
+    marginTop: 6
+  },
+  stats: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 11
+  },
+  stat: {
     flex: 1,
     backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 13,
+    padding: 14,
+    borderRadius: 14
   },
-  statLabel: { fontSize: 11, color: "#777", marginTop: 8 },
-  statValue: { fontSize: 21, fontWeight: "900", color: "#111", marginTop: 4 },
-  section: {
-    fontSize: 15,
+  statValue: {
+    fontSize: 16,
     fontWeight: "900",
     color: "#111",
-    marginBottom: 10,
+    marginTop: 8
+  },
+  section: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#111",
+    marginTop: 22,
+    marginBottom: 10
   },
   chartCard: {
     backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 13,
-    marginBottom: 20,
-    minHeight: 190,
-    justifyContent: "center",
+    borderRadius: 15,
+    padding: 14,
+    minHeight: 160,
+    justifyContent: "center"
   },
   chart: {
-    height: 160,
+    height: 140,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-around",
-    gap: 8,
+    gap: 5
   },
-  barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  barAmount: { fontSize: 8, color: "#777", marginBottom: 4 },
-  bar: { width: "70%", backgroundColor: "#111", borderRadius: 5 },
-  barLabel: { fontSize: 9, color: "#777", marginTop: 6 },
-  empty: { textAlign: "center", color: "#888", padding: 20 },
-  detailsCard: {
+  barCol: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end"
+  },
+  bar: {
+    width: "65%",
+    backgroundColor: "#111",
+    borderRadius: 5
+  },
+  barValue: {
+    fontSize: 8,
+    color: "#777",
+    marginBottom: 5
+  },
+  barLabel: {
+    fontSize: 8,
+    color: "#888",
+    marginTop: 6
+  },
+  card: {
     backgroundColor: "#fff",
-    borderRadius: 13,
-    paddingHorizontal: 15,
+    borderRadius: 15,
+    paddingHorizontal: 14
   },
-  detailRow: {
+  row: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 15,
+    alignItems: "center",
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#f1f1f1",
+    gap: 10
   },
-  detailLabel: { color: "#777", fontSize: 12 },
-  detailValue: { color: "#111", fontSize: 12, fontWeight: "900" },
+  rank: {
+    width: 25,
+    height: 25,
+    borderRadius: 8,
+    backgroundColor: "#eee",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  rankText: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#111"
+  },
+  productName: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#222"
+  },
+  qty: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#555"
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  muted: {
+    fontSize: 10,
+    color: "#999"
+  },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f1f1"
+  },
+  orderId: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#111"
+  },
+  date: {
+    fontSize: 10,
+    color: "#999",
+    marginTop: 4
+  },
+  amount: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#111"
+  },
+  status: {
+    fontSize: 10,
+    color: "#777",
+    marginTop: 4
+  },
+  empty: {
+    fontSize: 11,
+    color: "#999",
+    textAlign: "center",
+    padding: 20
+  }
 });

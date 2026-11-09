@@ -223,30 +223,31 @@ export default function InventoryScreen() {
       />
 
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categories}
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  style={styles.categories}
+  contentContainerStyle={styles.categoryContent}
+>
+  {categories.map((item) => (
+    <Pressable
+      key={item}
+      onPress={() => setCategory(item)}
+      style={[
+        styles.categoryButton,
+        category === item && styles.activeCategory,
+      ]}
+    >
+      <Text
+        style={[
+          styles.categoryText,
+          category === item && styles.activeText,
+        ]}
       >
-        {categories.map((item) => (
-          <Pressable
-            key={item}
-            onPress={() => setCategory(item)}
-            style={[
-              styles.categoryButton,
-              category === item && styles.activeCategory,
-            ]}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                category === item && styles.activeText,
-              ]}
-            >
-              {item}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+        {item}
+      </Text>
+    </Pressable>
+  ))}
+</ScrollView>
 
       <ScrollView contentContainerStyle={styles.list}>
         {filtered.map((item) => {
@@ -413,28 +414,42 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 13,
   },
-  categories: {
-    maxHeight: 55,
-    marginVertical: 12,
-    paddingLeft: 15,
-  },
-  categoryButton: {
-    backgroundColor: "#e9e9ec",
-    paddingHorizontal: 17,
-    paddingVertical: 11,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  activeCategory: {
-    backgroundColor: "#111",
-  },
-  categoryText: {
-    color: "#111",
-    fontWeight: "600",
-  },
-  activeText: {
-    color: "#fff",
-  },
+ categories: {
+  height: 45,
+  flexGrow: 0,
+  flexShrink: 0,
+  marginTop: 10,
+  marginBottom: 10,
+},
+
+categoryContent: {
+  paddingHorizontal: 15,
+  alignItems: "center",
+  gap: 8,
+},
+
+categoryButton: {
+  height: 33,
+  paddingHorizontal: 16,
+  borderRadius: 20,
+  backgroundColor: "#e9e9ec",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+activeCategory: {
+  backgroundColor: "#111",
+},
+
+categoryText: {
+  fontSize: 11,
+  color: "#111",
+  fontWeight: "700",
+},
+
+activeText: {
+  color: "#fff",
+},
   list: {
     padding: 15,
     paddingBottom: 30,
